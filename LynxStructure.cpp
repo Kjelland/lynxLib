@@ -291,18 +291,6 @@ namespace LynxStructureSpace
 
 		return (target * this->indexingSize);
 
-
-
-		//for (int i = 0; i < this->size; i++)
-		//{
-		//	if (this->dataParams[i].identifier == target)
-		//	{
-		//		index = i * this->indexingSize;
-		//		break;
-		//	}
-		//}
-
-		// return index;
 	}
 
  }
