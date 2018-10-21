@@ -29,7 +29,8 @@ namespace LynxStructureSpace
 		eBig
 	};
 
-	static void memcpyEndian(const void* src, void* dst, int size, E_Endianness srcEndian, E_Endianness dstEndian)
+    /*
+    static void memcpyEndian(const void* src, void* dst, int size, E_Endianness srcEndian, E_Endianness dstEndian)
 	{
 		const char* charSrc = (char*)src;
 		char* charDst = (char*)dst;
@@ -49,6 +50,7 @@ namespace LynxStructureSpace
 			}
 		}
 	}
+    */
 
 	class LynxStructure
 	{
@@ -67,7 +69,7 @@ namespace LynxStructureSpace
 			size = 0;
 			data = nullptr;
 			dataParams = nullptr;
-		};
+        }
 
 		~LynxStructure()
 		{
@@ -89,7 +91,7 @@ namespace LynxStructureSpace
 
 		int fromBuffer(const char *dataBuffer); // Returns size of copied data if success, -1 if failure
 
-		void clear(); // sets all elements to 0
+		void clear();							// sets all elements to 0
 
 		template <class T>
 		T getData(int target)
