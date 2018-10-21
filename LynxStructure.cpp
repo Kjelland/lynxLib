@@ -8,9 +8,11 @@ namespace LynxStructureSpace
 		int index = 0;
 
 		//  Write ID
-		dataBuffer[index] = (char)this->lynxID.deviceID;
+		dataBuffer[index] = char(this->lynxID.deviceID);
 		index++;
-		dataBuffer[index] = (char)this->lynxID.structID;
+		dataBuffer[index] = char(this->lynxID.structID & 0xFF);
+		index++;
+		dataBuffer[index] = char((this->lynxID.structID >> 8) & 0xFF);
 		index++;
 
 		// Write data
@@ -54,7 +56,7 @@ namespace LynxStructureSpace
 			}
 			break;
 			default:
-				break;
+				return -1;
 			}
 		}
 
@@ -76,9 +78,11 @@ namespace LynxStructureSpace
 
 		//  Read ID
 		LynxID tempID;
-		tempID.deviceID = (uint8_t)dataBuffer[index];
+		tempID.deviceID = uint8_t(dataBuffer[index]);
 		index++;
-		tempID.structID = (uint8_t)dataBuffer[index];
+		tempID.structID = uint16_t(dataBuffer[index] & 0xFF);
+		index++;
+		tempID.structID = tempID.structID | uint16_t((dataBuffer[index] << 8) & 0xFF00);
 		index++;
 		if (tempID.structID != this->lynxID.structID)
 		{
@@ -129,7 +133,7 @@ namespace LynxStructureSpace
 			}
 			break;
 			default:
-				break;
+				return -1;
 			}
 		}
 
@@ -159,6 +163,7 @@ namespace LynxStructureSpace
 			data[i] = 0;
 		}
 	}
+
 
 	int LynxStructure::checkSize(LynxDataType dataType)
 	{
@@ -190,6 +195,7 @@ namespace LynxStructureSpace
 			temp = sizeof(uint64_t);
 			break;
 		default:
+			temp = -1;
 			break;
 		}
 
@@ -226,13 +232,14 @@ namespace LynxStructureSpace
 			temp = 8;
 			break;
 		default:
+			temp = -1;
 			break;
 		}
 
 		return temp;
 	}
 
-	void LynxStructure::init(InitParam initParams[], LynxID _lynxID, int nElements)
+	void LynxStructure::init(const StructDefinition* structDefinition, LynxID _lynxID, int nElements)
 	{
 		this->lynxID = _lynxID;
 
@@ -248,13 +255,13 @@ namespace LynxStructureSpace
 		int tempSize;
 		for (int i = 0; i < this->size; i++)
 		{
-			if (initParams[i].dataType == eEndOfList)
+			if (structDefinition[i].dataType == eEndOfList)
 			{
 				this->size = i;
 				break;
 			}
 
-			tempSize = checkSize(initParams[i].dataType);
+			tempSize = checkSize(structDefinition[i].dataType);
 
 			if (tempSize > this->indexingSize)
 			{
@@ -267,20 +274,12 @@ namespace LynxStructureSpace
 		{
 			delete data;
 		}
-		if (dataParams)
-		{
-			delete dataParams;
-		}
 
 		data = new char[this->size*this->indexingSize];
-		dataParams = new InitParam[this->size];
+		dataParams = structDefinition;
 
 		this->clear();
 
-		for (int i = 0; i < this->size; i++)
-		{
-			dataParams[i] = initParams[i];
-		}
 	}
 
 	int LynxStructure::getOffset(int target)
