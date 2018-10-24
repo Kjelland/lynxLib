@@ -14,16 +14,20 @@ namespace LynxStructureSpace
 		eInt32,
 		eUint32,
 		eInt64,
-		eUint64
+		eUint64,
+		eFloat,
+		eDouble,
+		eIQ
 	};
 
 	struct LynxID
 	{
-		uint8_t deviceID;	// Identifies the current machine
-		uint16_t structID;	// Must be the same on both sides
+		uint8_t deviceID;			// Identifies the current machine
+		uint8_t structTypeID;		// Identifies the type of struct
+		uint8_t structInstanceID;	// Identifies the instance of the struct
 	};
 
-	enum StandardStructIDs : uint16_t
+	enum StandardStructIDs : uint8_t
 	{
 		invalidID = 0,
 		structureRequest,
@@ -32,37 +36,6 @@ namespace LynxStructureSpace
 		scanResponse,
 		endOfReserve
 	};
-
-	/*
-	enum E_Endianness
-	{
-		eNotChecked,
-		eLittle,
-		eBig
-	};
-	*/
-	/*
-	static void memcpyEndian(const void* src, void* dst, int size, E_Endianness srcEndian, E_Endianness dstEndian)
-	{
-		const char* charSrc = (char*)src;
-		char* charDst = (char*)dst;
-
-		if (srcEndian == dstEndian)
-		{
-			for (int i = 0; i < size; i++)
-			{
-				charDst[i] = charSrc[i];
-			}
-		}
-		else
-		{
-			for (int i = 0; i < size; i++)
-			{
-				charDst[size - i - 1] = charSrc[i];
-			}
-		}
-	}
-	*/
 
 	class LynxStructure
 	{
@@ -75,24 +48,27 @@ namespace LynxStructureSpace
 
 		LynxID lynxID; // identifies current datagram
 
+		bool dataChanged;
+
 		LynxStructure()
 		{
 			indexingSize = 0;
 			size = 0;
 			data = nullptr;
-			dataParams = nullptr;
+			_structDefinition = nullptr;
+			dataChanged = false;
 		};
 
 		~LynxStructure()
 		{
 			if (data)
 			{
-				delete data;
+				delete[] data;
 				data = nullptr;
 			}
-		}
+		};
 
-		void init(const StructDefinition initParams[], LynxID _lynxID, int nElements = 0);
+		void init(const StructDefinition structDefinition[], LynxID _lynxID, int nElements = 0);
 
 		int toBuffer(char *dataBuffer);			// Returns size of copied data if success, -1 if failure, -2 if checksum is wrong
 
@@ -100,24 +76,29 @@ namespace LynxStructureSpace
 
 		void clear();							// sets all elements to 0
 
+		const StructDefinition* structDefinition() { return this->_structDefinition; };
+
+		int getSize() { return this->size; };
 
 		template <class T>
-		T getData(int target)
+		T getData(int identifier)
 		{	
-			int offset = getOffset(target);
+			int offset = getOffset(identifier);
 			if (offset < 0)
 			{
 				return 0;
 			}
 
+			this->dataChanged = false;
+			
 			return *(T*)(data + offset);
 
 		};
 
 		template <class T>
-		void setData(int target, T dataIn)
+		void setData(int identifier, T dataIn)
 		{
-			int offset = getOffset(target);
+			int offset = getOffset(identifier);
 			if (offset < 0)
 			{
 				return;
@@ -126,6 +107,8 @@ namespace LynxStructureSpace
 			T* temp = (T*)(data + offset);
 
 			*temp = dataIn;
+
+			this->dataChanged = true;
 
 		};
 
@@ -150,14 +133,14 @@ namespace LynxStructureSpace
 		};
 
 	private:
-		int getOffset(int target);
+		int getOffset(int identifier);
 
 		int indexingSize;
 		int size;
 
 		char *data;
 
-		const StructDefinition *dataParams;
+		const StructDefinition* _structDefinition;
 
 		int checkSize(LynxDataType dataType);
 
@@ -166,6 +149,73 @@ namespace LynxStructureSpace
 
 	};
 
+	class LynxHandler
+	{
+	public:
+		uint8_t deviceID;
+
+		void init(uint8_t _deviceID, int nStructs = 0);
+
+		LynxID addStructure(uint8_t _structType, uint8_t _structInstance, const LynxStructure::StructDefinition* _structDefinition, int nElements = 0);
+
+		template <class T>
+		T getData(LynxID _lynxID, int _identifier)
+		{
+			int index = this->indexFromID(_lynxID);
+
+			if (index >= 0)
+			{
+				return this->_structures[index].getData<T>(_identifier);
+			}
+	
+			return 0;
+		};
+
+		template <class T>
+		T setData(LynxID _lynxID, int _identifier, T data) // Returns 0 if _lynxID was not found
+		{
+			int index = this->indexFromID(_lynxID);
+
+			if (index >= 0)
+			{
+				this->_structures[index].setData<T>(_identifier, data);
+				return data;
+			}
+
+			return 0;
+		};
+
+		int toBuffer(LynxID _lynxID, char* dataBuffer);
+
+		int fromBuffer(const char* dataBuffer);
+
+		LynxHandler(uint8_t _deviceID, int nStructs = 0)
+		{
+			_size = 0;
+			_reservedSize = 0;
+			_structures = nullptr;
+
+			this->init(_deviceID, nStructs);
+		};
+
+		~LynxHandler()
+		{
+			if (_structures)
+			{
+				delete[] _structures;
+				_structures = nullptr;
+			}
+		};
+
+		int size() { return _size; };
+
+	private:
+		LynxStructure* _structures;
+		int _size;
+		int _reservedSize;
+
+		int indexFromID(LynxID _lynxID);
+	};
 
 
  }

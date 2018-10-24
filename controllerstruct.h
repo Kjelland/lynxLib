@@ -1,6 +1,8 @@
 #pragma once
 #include "LynxStructure.h"
 
+#define CONTROLLER_STRUCT 0x12
+
 using namespace LynxStructureSpace;
 
 enum ControllerContents
