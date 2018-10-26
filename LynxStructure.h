@@ -48,15 +48,13 @@ namespace LynxStructureSpace
 
 		LynxID lynxID; // identifies current datagram
 
-		bool dataChanged;
-
 		LynxStructure()
 		{
 			indexingSize = 0;
 			size = 0;
 			data = nullptr;
 			_structDefinition = nullptr;
-			dataChanged = false;
+			_dataChanged = false;
 		};
 
 		~LynxStructure()
@@ -80,6 +78,8 @@ namespace LynxStructureSpace
 
 		int getSize() { return this->size; };
 
+		bool dataChanged();
+
 		template <class T>
 		T getData(int identifier)
 		{	
@@ -89,7 +89,7 @@ namespace LynxStructureSpace
 				return 0;
 			}
 
-			this->dataChanged = false;
+			this->_dataChanged = false;
 			
 			return *(T*)(data + offset);
 
@@ -108,7 +108,7 @@ namespace LynxStructureSpace
 
 			*temp = dataIn;
 
-			this->dataChanged = true;
+			this->_dataChanged = true;
 
 		};
 
@@ -140,6 +140,8 @@ namespace LynxStructureSpace
 
 		char *data;
 
+		bool _dataChanged;
+
 		const StructDefinition* _structDefinition;
 
 		int checkSize(LynxDataType dataType);
@@ -153,6 +155,24 @@ namespace LynxStructureSpace
 	{
 	public:
 		uint8_t deviceID;
+
+		LynxHandler(uint8_t _deviceID, int nStructs = 0)
+		{
+			_size = 0;
+			_reservedSize = 0;
+			_structures = nullptr;
+
+			this->init(_deviceID, nStructs);
+		};
+
+		~LynxHandler()
+		{
+			if (_structures)
+			{
+				delete[] _structures;
+				_structures = nullptr;
+			}
+		};
 
 		void init(uint8_t _deviceID, int nStructs = 0);
 
@@ -189,23 +209,7 @@ namespace LynxStructureSpace
 
 		int fromBuffer(const char* dataBuffer);
 
-		LynxHandler(uint8_t _deviceID, int nStructs = 0)
-		{
-			_size = 0;
-			_reservedSize = 0;
-			_structures = nullptr;
-
-			this->init(_deviceID, nStructs);
-		};
-
-		~LynxHandler()
-		{
-			if (_structures)
-			{
-				delete[] _structures;
-				_structures = nullptr;
-			}
-		};
+		bool dataChanged(LynxID _lynxID);
 
 		int size() { return _size; };
 

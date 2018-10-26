@@ -210,6 +210,13 @@ namespace LynxStructureSpace
 		}
 	}
 
+	bool LynxStructure::dataChanged()
+	{
+		bool temp = this->_dataChanged;
+		this->_dataChanged = false;
+		return temp;
+	}
+
 	
 	int LynxStructure::checkSize(LynxDataType dataType)
 	{
@@ -394,6 +401,18 @@ namespace LynxStructureSpace
 		}
 
 		return -1;
+	}
+
+	bool LynxHandler::dataChanged(LynxID _lynxID)
+	{
+		int index = indexFromID(_lynxID);
+
+		if (index < 0)
+		{
+			return false;
+		}
+
+		return this->_structures[index].dataChanged();
 	}
 
 	int LynxHandler::indexFromID(LynxID _lynxID)
