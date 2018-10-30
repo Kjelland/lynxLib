@@ -1,5 +1,11 @@
 #pragma once
 #include <stdint.h>
+#ifdef ti
+#define nullptr 0
+typedef uint16_t uint8_t;
+typedef int16_t int8_t;
+#endif
+
 
 namespace LynxStructureSpace
 {
@@ -27,7 +33,7 @@ namespace LynxStructureSpace
 		uint8_t structInstanceID;	// Identifies the instance of the struct
 	};
 
-	enum StandardStructIDs : uint8_t
+	enum StandardStructIDs // : uint8_t
 	{
 		invalidID = 0,
 		structureRequest,
@@ -93,7 +99,7 @@ namespace LynxStructureSpace
 			
 			return *(T*)(data + offset);
 
-		};
+		}
 
 		template <class T>
 		void setData(int identifier, T dataIn)
@@ -110,13 +116,13 @@ namespace LynxStructureSpace
 
 			this->_dataChanged = true;
 
-		};
+		}
 
 		template <class T>
 		bool getBit(int identifier, T bitMask)
 		{
 			return ((getData<T>(identifier) & bitMask) != 0);
-		};
+		}
 
 		template <class T>
 		void setBit(int identifier, T bitMask, bool state)
@@ -130,7 +136,7 @@ namespace LynxStructureSpace
 			{
 				setData(identifier, temp & ~bitMask);
 			}
-		};
+		}
 
 	private:
 		int getOffset(int identifier);
@@ -189,7 +195,7 @@ namespace LynxStructureSpace
 			}
 	
 			return 0;
-		};
+		}
 
 		template <class T>
 		T setData(LynxID _lynxID, int _identifier, T data) // Returns 0 if _lynxID was not found
@@ -203,7 +209,7 @@ namespace LynxStructureSpace
 			}
 
 			return 0;
-		};
+		}
 
 		int toBuffer(LynxID _lynxID, char* dataBuffer);
 
