@@ -9,6 +9,16 @@ namespace LynxStructureSpace
 	{
 		this->lynxID = _lynxID;
 
+		/*for (int i; i < 20; i++)
+		{
+			if ((structDefinition->structName[i] == '0') || (i == 19))
+			{
+				this->_structName[i] = '0';
+				break;
+			}
+			this->_structName[i] = structDefinition->structName[i];
+		}*/
+		
 		if (nElements == 0)
 		{
 			this->size = 255;
@@ -21,13 +31,13 @@ namespace LynxStructureSpace
 		int tempSize;
 		for (int i = 0; i < this->size; i++)
 		{
-			if (structDefinition[i].dataType == eEndOfList)
+			if (structDefinition->structItems[i].dataType == eEndOfList)
 			{
 				this->size = i;
 				break;
 			}
 
-			tempSize = checkLocalSize(structDefinition[i].dataType);
+			tempSize = checkLocalSize(structDefinition->structItems[i].dataType);
 
 			if (tempSize > this->indexingSize)
 			{
@@ -43,6 +53,7 @@ namespace LynxStructureSpace
 
 		data = new char[this->size*this->indexingSize];
 		_structDefinition = structDefinition;
+		// _structName = structDefinition->structName;
 
 		this->clear();
 
@@ -64,7 +75,7 @@ namespace LynxStructureSpace
 		// Write data
 		for (int i = 0; i < this->size; i++)
 		{
-			tempTransferSize = checkTransferSize(this->_structDefinition[i].dataType);
+			tempTransferSize = checkTransferSize(this->_structDefinition->structItems[i].dataType);
 			switch (tempTransferSize)
 			{
 			case 1:
@@ -125,7 +136,7 @@ namespace LynxStructureSpace
 		// Read data
 		for (int i = 0; i < this->size; i++)
 		{
-			tempTransferSize = checkTransferSize(this->_structDefinition[i].dataType);
+			tempTransferSize = checkTransferSize(this->_structDefinition->structItems[i].dataType);
 			switch (tempTransferSize)
 			{
 			case 1:
@@ -196,6 +207,15 @@ namespace LynxStructureSpace
 			data[i] = 0;
 		}
 	}
+
+	//const StructDefinition * LynxStructure::structDefinition()
+	//{
+	//	StructDefinition temp;
+	//	temp.structName = this->_structName;
+	//	this->_structItems
+	//};
+	//	return temp;
+	//}
 
 	bool LynxStructure::dataChanged()
 	{
@@ -327,7 +347,7 @@ namespace LynxStructureSpace
 		}
 	}
 
-	LynxID LynxHandler::addStructure(uint8_t _structType, uint8_t _structInstance, const LynxStructure::StructDefinition* _structDefinition, int nElements)
+	LynxID LynxHandler::addStructure(uint8_t _structType, uint8_t _structInstance, const StructDefinition* _structDefinition, int nElements)
 	{
 		_size++;
 
@@ -341,6 +361,7 @@ namespace LynxStructureSpace
 			{
 				for (int i = 0; i < _reservedSize - 1; i++)
 				{
+					// StructDefinition temp = { this->_structures[i].structName(), }
 					tempStructs[i].init(_structures[i].structDefinition(), _structures[i].lynxID, _structures[i].getSize());
 				}
 				
@@ -358,6 +379,25 @@ namespace LynxStructureSpace
 
 	}
 
+	int LynxHandler::scanRequest(char* dataBuffer)
+	{
+		int index = 0;
+		dataBuffer[index] = char(StandardStructIDs::eLynxRequest);
+		index++;
+		dataBuffer[index] = char(RequestIDs::eRqDeviceInfo);
+		index++;
+		
+		char checksum = 0;
+		for (int i = 0; i < index; i++)
+		{
+			checksum += dataBuffer[i];
+		}
+		dataBuffer[index] = checksum;
+		index++;
+
+		return index;
+	}
+
 	int LynxHandler::toBuffer(LynxID _lynxID, char * dataBuffer)
 	{
 		int index = this->indexFromID(_lynxID);
@@ -370,24 +410,23 @@ namespace LynxStructureSpace
 		return -1;
 	}
 
-	int LynxHandler::fromBuffer(const char * dataBuffer)
+	int LynxHandler::fromBuffer(const char * dataBuffer, LynxIpAddress ipAddress)
 	{
-		LynxID tempID;
-
-		tempID.deviceID = dataBuffer[0];
-		tempID.structTypeID = dataBuffer[1];
-		tempID.structInstanceID = dataBuffer[2];
-
-		int index = this->indexFromID(tempID);
-
-		if (index >= 0)
+		if (dataBuffer[0] > StandardStructIDs::eSsEndOfReserve)
 		{
-			this->_structures[index].lynxID = tempID;
-
-			return this->_structures[index].fromBuffer(dataBuffer);
+			return datagramFromBuffer(dataBuffer);
+		}
+		else if (dataBuffer[0] == StandardStructIDs::eLynxRequest)
+		{
+			return handleRequest(dataBuffer, ipAddress);
+		}
+		else if (dataBuffer[0] == StandardStructIDs::eLynxResponse)
+		{
+			return handleResponse(dataBuffer, ipAddress);
 		}
 
 		return -1;
+
 	}
 
 	bool LynxHandler::dataChanged(LynxID _lynxID)
@@ -402,6 +441,49 @@ namespace LynxStructureSpace
 		return this->_structures[index].dataChanged();
 	}
 
+	LynxScanResponse LynxHandler::getScanResponse()
+	{
+		_newScanResponse = false;
+		return _scanResponse;
+	}
+
+	int LynxHandler::sendScanResponse(char* dataBuffer)
+	{
+		_newScanRequest = false;
+
+		int index = 0;
+		dataBuffer[index] = StandardStructIDs::eLynxResponse;
+		index++;
+		dataBuffer[index] = RequestIDs::eRqDeviceInfo;
+		index++;
+		
+		for (int i = 0; i < 20; i++)
+		{
+			if ((this->deviceName[i] == '\0') || (i == 19))
+			{
+				dataBuffer[index] = '\0';
+				index += 20 - i;
+				break;
+			}
+			dataBuffer[index] = this->deviceName[i];
+			index++;
+		}
+
+		dataBuffer[index] = this->deviceID;
+		index++;
+
+		char checksum = 0;
+		for (int i = 0; i < index; i++)
+		{
+			checksum += dataBuffer[i];
+		}
+
+		dataBuffer[index] = checksum;
+		index++;
+
+		return index;
+	}
+
 	int LynxHandler::indexFromID(LynxID _lynxID)
 	{
 		for (int i = 0; i < this->_size; i++)
@@ -411,6 +493,88 @@ namespace LynxStructureSpace
 			{
 				return i;
 			}
+		}
+
+		return -1;
+	}
+
+	int LynxHandler::handleRequest(const char * dataBuffer, LynxIpAddress ipAddress)
+	{
+		if (dataBuffer[1] == RequestIDs::eRqDeviceInfo)
+		{
+			_newScanRequest = true;
+			return 0;
+		}
+		return -1;
+	}
+
+	int LynxHandler::handleResponse(const char * dataBuffer, LynxIpAddress ipAddress)
+	{
+		if (dataBuffer[1] == RequestIDs::eRqDeviceInfo)
+		{
+			this->_scanResponse = receiveScanResponse(dataBuffer, ipAddress);
+			if (_scanResponse.deviceID > 0)
+			{
+				this->_newScanResponse = true;
+				return 0;
+			}
+		}
+		return -1;
+	}
+
+	LynxScanResponse LynxHandler::receiveScanResponse(const char * dataBuffer, LynxIpAddress ipAddress)
+	{
+		LynxScanResponse response;
+		int index = 2;
+		for (int i = 0; i < 20; i++)
+		{
+			if ((dataBuffer[index] == '\0') || (i == 19))
+			{
+				response.deviceName[i] = '\0';
+				index += 20 - i;
+				break;
+			}
+			response.deviceName[i] = dataBuffer[index];
+			index++;
+		}
+
+		response.deviceID = dataBuffer[index];
+		index++;
+
+		response.ipAddress = ipAddress;
+
+		char checksum = 0;
+		for (int i = 0; i < index; i++)
+		{
+			checksum += dataBuffer[i];
+		}
+
+		if (checksum == dataBuffer[index])
+		{
+			return response;
+		}
+		else
+		{
+			return LynxScanResponse();
+		}
+
+	}
+
+	int LynxHandler::datagramFromBuffer(const char * dataBuffer)
+	{
+		LynxID tempID;
+
+		tempID.deviceID = dataBuffer[0];
+		tempID.structTypeID = dataBuffer[1];
+		tempID.structInstanceID = dataBuffer[2];
+
+		int index = this->indexFromID(tempID);
+
+		if (index >= 0)
+		{
+			this->_structures[index].lynxID = tempID;
+
+			return this->_structures[index].fromBuffer(dataBuffer);
 		}
 
 		return -1;
