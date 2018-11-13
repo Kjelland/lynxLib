@@ -3,6 +3,8 @@
 
 namespace LynxStructureSpace
 {
+	//----------------------------------------------- Enums ------------------------------------------------------------
+
 	enum LynxDataType
 	{
 		eEndOfList = 0,
@@ -20,11 +22,10 @@ namespace LynxStructureSpace
 		eIQ
 	};
 
-	struct LynxID
+	enum LynxStructMode
 	{
-		uint8_t deviceID;			// Identifies the current machine
-		uint8_t structTypeID;		// Identifies the type of struct
-		uint8_t structInstanceID;	// Identifies the instance of the struct
+		eStructureMode = 1,
+		eArrayMode
 	};
 
 	enum StandardStructIDs
@@ -42,16 +43,62 @@ namespace LynxStructureSpace
 		eRqStructInfo
 	};
 
+	//----------------------------------------------- Structures ------------------------------------------------------------
+
+	struct LynxID
+	{
+		LynxID()
+		{
+			deviceID = 0;
+			structTypeID = 0;
+			structInstanceID = 0;
+		};
+		LynxID(uint8_t _deviceID, uint8_t _structTypeID, uint8_t _structInstanceID)
+		{
+			deviceID = _deviceID;
+			structTypeID = _structTypeID;
+			structInstanceID = _structInstanceID;
+		};
+		uint8_t deviceID;			// Identifies the current machine
+		uint8_t structTypeID;		// Identifies the type of struct
+		uint8_t structInstanceID;	// Identifies the instance of the struct
+	};
+
 	struct StructItem
 	{
-		int identifier;
+		StructItem(const char _name[], LynxDataType _dataType)
+			: name{ _name }, dataType{ _dataType } {};
+		const char* name;
 		LynxDataType dataType;
 	};
 
 	struct StructDefinition
 	{
-		const char structName[20];
+		StructDefinition(const char _structName[], const LynxStructMode _structMode, const StructItem* _structItems, int _size = 0) 
+			: structName{ _structName }, structMode{ _structMode }, structItems{ _structItems }
+		{
+			if ((_size > 0) || (_structMode == eArrayMode))
+			{
+				size = _size;
+			}
+			else
+			{
+				for (int i = 0; i < 256; i++)
+				{
+					if (_structItems[i].dataType == eEndOfList)
+					{
+						size = i;
+						return;
+					}
+				}
+				size = 0;
+			}
+		};
+
+		const char* structName;
+		const LynxStructMode structMode;
 		const StructItem* structItems;
+		int size;
 	};
 
 	union LynxIpAddress
@@ -88,9 +135,9 @@ namespace LynxStructureSpace
 		unsigned char ip_8[4];
 	};
 
-	struct LynxScanResponse
+	struct LynxDeviceInfo
 	{
-		LynxScanResponse()
+		LynxDeviceInfo()
 		{
 			deviceName[0] = '\0';
 			deviceID = 0;
@@ -102,6 +149,157 @@ namespace LynxStructureSpace
 		LynxIpAddress ipAddress;
 	};
 
+	//----------------------------------------------- LynxList ------------------------------------------------------------
+
+	template <class T>
+	class LynxList
+	{
+	public:
+		LynxList()
+		{
+			_list = nullptr;
+			_size = 0;
+			_reservedSize = 0;
+		};
+
+		LynxList(int size)
+		{
+			this->reserve(size);
+		};
+
+		LynxList(const LynxList<T>& list)
+		{
+			_list = nullptr;
+			*this = list;
+		};
+
+		~LynxList()
+		{
+			if (_list)
+			{
+				delete[] _list;
+				_list = nullptr;
+			}
+		};
+
+		void operator = (const LynxList<T>& list)
+		{
+			this->reserve(list._size);
+
+			for (int i = 0; i < this->_size; i++)
+			{
+				this->_list[i] = list._list[i];
+			}
+
+			this->_size = list._size;
+		};
+
+		void reserve(int size)
+		{
+			if (_list)
+			{
+				delete[] _list;
+				_list = nullptr;
+			}
+
+			_size = 0;
+			_reservedSize = size;
+			_list = new T[size];
+		};
+
+		int appendItem(const T& item) // Adds a new item at the end of the list and populates it with "item". Returns index of appended item if successful, -1 if unsuccessful
+		{
+			int index = this->appendItem();
+
+			if (index < 0)
+			{
+				return index;
+			}
+
+			_list[index] = item;
+			return (index);
+		};
+
+		int appendItem() // Adds a new empty instance at the end of the list. Returns index of appended item if successful, -1 if unsuccessful
+		{
+			_size++;
+
+			if (_size > _reservedSize)
+			{
+				_reservedSize++;
+
+				T* tempList = new T[_reservedSize];
+
+				if (_list)
+				{
+					for (int i = 0; i < _reservedSize - 1; i++)
+					{
+						tempList[i] = _list[i];
+					}
+
+					delete[] _list;
+				}
+
+				_list = tempList;
+				tempList = nullptr;
+			}
+
+			_list[_size - 1] = T();
+
+			return (_size - 1);
+		};
+
+		int removeItem(int index)	// Removes the indexed item and shifts the remaining items to fill.
+									// Returns number of remaining items if successful, -1 if failed
+									// If there are no remaining items, the allocated memory is freed.
+		{
+			if (index < this->_size)
+			{
+				_size--;
+				if (_size <= 0)
+				{
+					this->deleteList();
+					return this->_size;
+				}
+
+				for (int i = index; i < _size; i++)
+				{
+					_list[i] = _list[i + 1];
+				}
+				return this->_size;
+			}
+
+			return -1;
+		};
+
+		void deleteList()
+		{
+			_size = 0;
+			_reservedSize = 0;
+			if (_list)
+			{
+				delete[] _list;
+				_list = nullptr;
+			}
+		};
+
+		T& at(int index)
+		{
+			return _list[index];
+		};
+
+		int getSize() { return _size; };
+
+	protected:
+		T* _list;
+
+		// T emptyReference;
+		int _size;
+		int _reservedSize;
+	};
+
+	//----------------------------------------------- LynxStructure ------------------------------------------------------------
+
 	class LynxStructure
 	{
 	public:
@@ -111,7 +309,7 @@ namespace LynxStructureSpace
 		LynxStructure()
 		{
 			indexingSize = 0;
-			size = 0;
+			// size = 0;
 			data = nullptr;
 			_structDefinition = nullptr;
 			// _structName = nullptr;
@@ -127,7 +325,7 @@ namespace LynxStructureSpace
 			}
 		};
 
-		void init(const StructDefinition* structDefinition, LynxID _lynxID, int nElements = 0);
+		void init(const StructDefinition* structDefinition, LynxID _lynxID);
 
 		int toBuffer(char *dataBuffer);			// Returns size of copied data if success, -1 if failure, -2 if checksum is wrong
 
@@ -137,7 +335,7 @@ namespace LynxStructureSpace
 
 		const StructDefinition* structDefinition() { return _structDefinition; };
 
-		int getSize() { return this->size; };
+		int getSize() { return this->_structDefinition->size; };
 
 		bool dataChanged();
 
@@ -147,7 +345,7 @@ namespace LynxStructureSpace
 			int offset = getOffset(identifier);
 			if (offset < 0)
 			{
-				return 0;
+				return T();
 			}
 
 			this->_dataChanged = false;
@@ -199,7 +397,7 @@ namespace LynxStructureSpace
 		int getOffset(int identifier);
 
 		int indexingSize;
-		int size;
+		// int size;
 
 		char *data;
 
@@ -217,25 +415,27 @@ namespace LynxStructureSpace
 	class LynxHandler
 	{
 	public:
-		uint8_t deviceID;
+		// uint8_t deviceID;
 
 		LynxHandler(uint8_t _deviceID, const char* _deviceName, int nStructs = 0)
 		{
+			this->_deviceInfo.deviceID = _deviceID;
+
 			for (int i = 0; i < 20; i++)
 			{
 				if ((_deviceName[i] == '\0') || (i == 19))
 				{
-					this->deviceName[i] = '\0';
+					this->_deviceInfo.deviceName[i] = '\0';
 					break;
 				}
-				this->deviceName[i] = _deviceName[i];
+				this->_deviceInfo.deviceName[i] = _deviceName[i];
 			}
 			_size = 0;
 			_reservedSize = 0;
 			_structures = nullptr;
-			_newScanResponse = false;
+			// _newScanResponse = false;
 			_newScanRequest = false;
-			this->init(_deviceID, nStructs);
+			this->init(nStructs);
 		};
 
 		~LynxHandler()
@@ -247,9 +447,9 @@ namespace LynxStructureSpace
 			}
 		};
 
-		void init(uint8_t _deviceID, int nStructs = 0);
+		void init(int nStructs = 0);
 
-		LynxID addStructure(uint8_t _structType, uint8_t _structInstance, const StructDefinition* _structDefinition, int nElements = 0);
+		LynxID addStructure(uint8_t _structType, uint8_t _structInstance, const StructDefinition* _structDefinition);
 
 		int scanRequest(char* dataBuffer);
 
@@ -312,22 +512,24 @@ namespace LynxStructureSpace
 
 		int size() { return _size; };
 
-		bool newScanResponse() { return _newScanResponse; };
+		int newScanResponses() { return _availableDevices.getSize(); }; // returns number of remaining scan responses
 
-		LynxScanResponse getScanResponse();
+		LynxDeviceInfo getScanResponse();
 
 		bool newScanRequest() { return _newScanRequest; };
 
 		int sendScanResponse(char* dataBuffer);
 
 	private:
-		char deviceName[20];
+		LynxDeviceInfo _deviceInfo;
 
-		bool _newScanResponse;
+		// char deviceName[20];
+
+		// bool _newScanResponse;
 
 		bool _newScanRequest;
 
-		LynxScanResponse _scanResponse;
+		LynxList<LynxDeviceInfo> _availableDevices;
 
 		LynxStructure* _structures;
 		int _size;
@@ -339,7 +541,7 @@ namespace LynxStructureSpace
 
 		int handleResponse(const char* dataBuffer, LynxIpAddress ipAddress);
 
-		LynxScanResponse receiveScanResponse(const char* dataBuffer, LynxIpAddress ipAddress);
+		LynxDeviceInfo receiveScanResponse(const char* dataBuffer, LynxIpAddress ipAddress);
 
 		int datagramFromBuffer(const char* dataBuffer);
 	};
