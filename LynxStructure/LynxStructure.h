@@ -67,7 +67,7 @@ namespace LynxStructureSpace
 	struct StructItem
 	{
 		StructItem(const char _name[], LynxDataType _dataType)
-			: name{ _name }, dataType{ _dataType } {};
+			: name( _name ), dataType( _dataType ) {};
 		const char* name;
 		LynxDataType dataType;
 	};
@@ -75,7 +75,7 @@ namespace LynxStructureSpace
 	struct StructDefinition
 	{
 		StructDefinition(const char _structName[], const LynxStructMode _structMode, const StructItem* _structItems, int _size = 0) 
-			: structName{ _structName }, structMode{ _structMode }, structItems{ _structItems }
+			: structName( _structName ), structMode( _structMode ), structItems( _structItems )
 		{
 			if ((_size > 0) || (_structMode == eArrayMode))
 			{
@@ -340,6 +340,66 @@ namespace LynxStructureSpace
 		bool dataChanged();
 
 		template <class T>
+		int copyDataToTarget(void* target, int size = 0)
+		{
+			if (!(_structDefinition->structMode == eArrayMode))
+			{
+				return -2;
+			}
+			if (size == 0)
+			{
+				size = this->_structDefinition->size;
+			}
+			else
+			{
+				if (size > _structDefinition->size)
+				{
+					return -1;
+				}
+			}
+
+			T* pDest = (T*)(target);
+			T* pSrc = (T*)(this->data);
+
+			for (int i = 0; i < size; i++)
+			{
+				pDest[i] = pSrc[i];
+			}
+
+			return size;
+		}
+
+		template <class T>
+		int copyDataFromTarget(const void* target, int size = 0)
+		{
+			if (!(_structDefinition->structMode == eArrayMode))
+			{
+				return -2;
+			}
+			if (size == 0)
+			{
+				size = this->_structDefinition->size;
+			}
+			else
+			{
+				if (size > _structDefinition->size)
+				{
+					return -1;
+				}
+			}
+
+			T* pSrc = (T*)(target);
+			T* pDest = (T*)(this->data);
+
+			for (int i = 0; i < size; i++)
+			{
+				pDest[i] = pSrc[i];
+			}
+
+			return size;
+		}
+
+		template <class T>
 		T getData(int identifier)
 		{	
 			int offset = getOffset(identifier);
@@ -352,7 +412,7 @@ namespace LynxStructureSpace
 			
 			return *(T*)(data + offset);
 
-		};
+		}
 
 		template <class T>
 		void setData(int identifier, T dataIn)
@@ -369,13 +429,13 @@ namespace LynxStructureSpace
 
 			this->_dataChanged = true;
 
-		};
+		}
 
 		template <class T>
 		bool getBit(int identifier, T bitMask)
 		{
 			return ((getData<T>(identifier) & bitMask) != 0);
-		};
+		}
 
 		template <class T>
 		void setBit(int identifier, T bitMask, bool state)
@@ -389,7 +449,7 @@ namespace LynxStructureSpace
 			{
 				setData(identifier, temp & ~bitMask);
 			}
-		};
+		}
 
 	private:
 		// const char* _structName;
@@ -454,6 +514,32 @@ namespace LynxStructureSpace
 		int scanRequest(char* dataBuffer);
 
 		template <class T>
+		int copyDataToTarget(LynxID _lynxID, void* target, int size = 0)
+		{
+			int index = this->indexFromID(_lynxID);
+
+			if (index < 0)
+			{
+				return index;
+			}
+
+			return _structures[index].copyDataToTarget<T>(target, size);
+		}
+
+		template <class T>
+		int copyDataFromTarget(LynxID _lynxID, const void* target, int size = 0)
+		{
+			int index = this->indexFromID(_lynxID);
+
+			if (index < 0)
+			{
+				return index;
+			}
+
+			return _structures[index].copyDataFromTarget<T>(target, size);
+		}
+
+		template <class T>
 		T getData(LynxID _lynxID, int _identifier)
 		{
 			int index = this->indexFromID(_lynxID);
@@ -464,7 +550,7 @@ namespace LynxStructureSpace
 			}
 	
 			return 0;
-		};
+		}
 
 		template <class T>
 		T setData(LynxID _lynxID, int _identifier, T data) // Returns 0 if _lynxID was not found
@@ -478,7 +564,7 @@ namespace LynxStructureSpace
 			}
 
 			return 0;
-		};
+		}
 
 		template <class T>
 		bool getBit(LynxID _lynxID, int identifier, T bitMask)
@@ -490,7 +576,7 @@ namespace LynxStructureSpace
 			}
 
 			return this->_structures[index].getBit<T>(identifier, bitMask);
-		};
+		}
 
 		template <class T>
 		void setBit(LynxID _lynxID, int identifier, T bitMask, bool state)
@@ -502,7 +588,7 @@ namespace LynxStructureSpace
 			}
 
 			this->_structures[index].setBit<T>(identifier, bitMask, state);
-		};
+		}
 
 		int toBuffer(LynxID _lynxID, char* dataBuffer);
 

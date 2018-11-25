@@ -124,7 +124,7 @@ namespace LynxStructureSpace
 		char checksum = 0;
 		for (int i = 0; i < index; i++)
 		{
-			checksum += data[i];
+			checksum += dataBuffer[i];
 		}
 		dataBuffer[index] = checksum;
 
@@ -401,9 +401,9 @@ namespace LynxStructureSpace
 	int LynxHandler::scanRequest(char* dataBuffer)
 	{
 		int index = 0;
-		dataBuffer[index] = char(StandardStructIDs::eLynxRequest);
+		dataBuffer[index] = char(eLynxRequest);
 		index++;
-		dataBuffer[index] = char(RequestIDs::eRqDeviceInfo);
+		dataBuffer[index] = char(eRqDeviceInfo);
 		index++;
 
 		for (int i = 0; i < 20; i++)
@@ -446,15 +446,15 @@ namespace LynxStructureSpace
 
 	int LynxHandler::fromBuffer(const char * dataBuffer, LynxIpAddress ipAddress)
 	{
-		if (dataBuffer[0] > StandardStructIDs::eSsEndOfReserve)
+		if (dataBuffer[0] > eSsEndOfReserve)
 		{
 			return datagramFromBuffer(dataBuffer);
 		}
-		else if (dataBuffer[0] == StandardStructIDs::eLynxRequest)
+		else if (dataBuffer[0] == eLynxRequest)
 		{
 			return handleRequest(dataBuffer, ipAddress);
 		}
-		else if (dataBuffer[0] == StandardStructIDs::eLynxResponse)
+		else if (dataBuffer[0] == eLynxResponse)
 		{
 			return handleResponse(dataBuffer, ipAddress);
 		}
