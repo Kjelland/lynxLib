@@ -1,10 +1,12 @@
 #pragma once
 #include "LynxStructure.h"
 
-#define CONTROLLER_STRUCT 0x12
-
 using namespace LynxStructureSpace;
 
+
+//------------------- Example of a basic struct -----------------------------
+
+#define CONTROLLER_STRUCT 0x12
 enum ControllerContents
 {
 	joy_LX,
@@ -23,20 +25,21 @@ static const StructItem controllerItems[]
 	{ "joy_LY", eInt16 },
 	{ "joy_RX", eInt16 },
 	{ "joy_RY", eInt16 },
-	{ "trigger_L", eInt8 },
-	{ "trigger_R", eInt8 },
+	{ "trigger_L", eUint8 },
+	{ "trigger_R", eUint8 },
 	{ "buttons", eUint32},
 	{ "", eEndOfList }
 };
 
 static const StructDefinition controllerDefinition
 {
-	{ "Controller Struct" },
-	{ eStructureMode },
-	{ controllerItems }
+	 "Controller Struct",
+	 eStructureMode,
+	 controllerItems
 };
 
-// static const char controllerName[] = "Controller Struct";
+
+//---------------- Example of an array struct ----------------------------
 
 #define CONTROLLER_ARRAY 0x13
 static const StructItem controllerArrayItems[]

@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#define LYNX_VERSION "1.1.0" 
 
 namespace LynxStructureSpace
 {
@@ -41,6 +42,13 @@ namespace LynxStructureSpace
 		eRqInvalidID = 0,
 		eRqDeviceInfo,
 		eRqStructInfo
+	};
+
+	enum SendMode
+	{
+		eAllVariables = 0,
+		eSingleVariable,
+		eSendModeEndOfList
 	};
 
 	//----------------------------------------------- Structures ------------------------------------------------------------
@@ -103,50 +111,63 @@ namespace LynxStructureSpace
 
 	union LynxIpAddress
 	{
-		LynxIpAddress() { ip_32 = 0; };
-		LynxIpAddress(uint32_t ipAddress) { ip_32 = ipAddress; };
+		LynxIpAddress() { address.ip_32 = 0; };
+
+		LynxIpAddress(uint32_t ipAddress) { address.ip_32 = ipAddress; };
+
 		LynxIpAddress(const unsigned char ipAddress[4])
 		{
 			for (int i = 0; i < 4; i++)
 			{
-				ip_8[i] = ipAddress[i];
+				address.ip_8[i] = ipAddress[i];
 			}
 		};
+
 		LynxIpAddress(char ip0, char ip1, char ip2, char ip3)
 		{
-			ip_32 = 1;
-			if (ip_8[0] == 1)
+			address.ip_32 = 1;
+
+			if (address.ip_8[0] == 1)	// Little endian
 			{
-				ip_8[0] = ip3;
-				ip_8[1] = ip2;
-				ip_8[2] = ip1;
-				ip_8[3] = ip0;
+				address.ip_8[0] = ip3;
+				address.ip_8[1] = ip2;
+				address.ip_8[2] = ip1;
+				address.ip_8[3] = ip0;
 			}
-			else
+			else						// Big endian
 			{
-				ip_8[0] = ip0;
-				ip_8[1] = ip1;
-				ip_8[2] = ip2;
-				ip_8[3] = ip3;
+				address.ip_8[0] = ip0;
+				address.ip_8[1] = ip1;
+				address.ip_8[2] = ip2;
+				address.ip_8[3] = ip3;
 			}
 			
 		};
-		uint32_t ip_32;
-		unsigned char ip_8[4];
+
+		union Address
+		{
+			uint32_t ip_32;
+			unsigned char ip_8[4];
+		}address;
+		
 	};
 
 	struct LynxDeviceInfo
 	{
 		LynxDeviceInfo()
 		{
+			// lynxVersion[0] = '\0';
 			deviceName[0] = '\0';
 			deviceID = 0;
 			ipAddress = LynxIpAddress();
+			newDevice = false;
 		};
 
+		// char lynxVersion[11];
 		char deviceName[20];
 		uint8_t deviceID;
 		LynxIpAddress ipAddress;
+		bool newDevice;
 	};
 
 	//----------------------------------------------- LynxList ------------------------------------------------------------
@@ -327,7 +348,7 @@ namespace LynxStructureSpace
 
 		void init(const StructDefinition* structDefinition, LynxID _lynxID);
 
-		int toBuffer(char *dataBuffer);			// Returns size of copied data if success, -1 if failure, -2 if checksum is wrong
+		int toBuffer(char *dataBuffer, SendMode sendMode = eAllVariables, int subindex = 0);			// Returns size of copied data if success, -1 if failure, -2 if checksum is wrong
 
 		int fromBuffer(const char *dataBuffer); // Returns size of copied data if success, -1 if failure
 
@@ -357,6 +378,10 @@ namespace LynxStructureSpace
 					return -1;
 				}
 			}
+			if (this->checkLocalSize(this->_structDefinition->structItems->dataType) != sizeof(T))
+			{
+				return -3;
+			}
 
 			T* pDest = (T*)(target);
 			T* pSrc = (T*)(this->data);
@@ -365,6 +390,8 @@ namespace LynxStructureSpace
 			{
 				pDest[i] = pSrc[i];
 			}
+
+			this->_dataChanged = false;
 
 			return size;
 		}
@@ -387,6 +414,10 @@ namespace LynxStructureSpace
 					return -1;
 				}
 			}
+			if (this->checkLocalSize(this->_structDefinition->structItems->dataType) != sizeof(T))
+			{
+				return -3;
+			}
 
 			T* pSrc = (T*)(target);
 			T* pDest = (T*)(this->data);
@@ -395,6 +426,8 @@ namespace LynxStructureSpace
 			{
 				pDest[i] = pSrc[i];
 			}
+
+			this->_dataChanged = true;
 
 			return size;
 		}
@@ -469,8 +502,14 @@ namespace LynxStructureSpace
 
 		int checkTransferSize(LynxDataType dataType);
 
+		int writeVarToBuffer(char* dataBuffer, int bufferIndex, int lynxIndex);
+
+		int writeVarFromBuffer(const char* dataBuffer, int bufferIndex, int lynxIndex);
+
 
 	};
+
+	//----------------------------------------------- LynxHandler ------------------------------------------------------------
 
 	class LynxHandler
 	{
@@ -493,7 +532,7 @@ namespace LynxStructureSpace
 			_size = 0;
 			_reservedSize = 0;
 			_structures = nullptr;
-			// _newScanResponse = false;
+			// _newScanResponses = 0;
 			_newScanRequest = false;
 			this->init(nStructs);
 		};
@@ -590,7 +629,7 @@ namespace LynxStructureSpace
 			this->_structures[index].setBit<T>(identifier, bitMask, state);
 		}
 
-		int toBuffer(LynxID _lynxID, char* dataBuffer);
+		int toBuffer(LynxID _lynxID, char* dataBuffer, SendMode sendMode = eAllVariables, int subIndex = 0 );
 
 		int fromBuffer(const char* dataBuffer, LynxIpAddress ipAddress = LynxIpAddress());
 
@@ -598,7 +637,7 @@ namespace LynxStructureSpace
 
 		int size() { return _size; };
 
-		int newScanResponses() { return _availableDevices.getSize(); }; // returns number of remaining scan responses
+		int newScanResponses(); // returns number of remaining scan responses
 
 		LynxDeviceInfo getScanResponse();
 
@@ -616,6 +655,9 @@ namespace LynxStructureSpace
 		bool _newScanRequest;
 
 		LynxList<LynxDeviceInfo> _availableDevices;
+		// int _newScanResponses;
+
+		int checkAvailableDevices(LynxDeviceInfo& deviceName);
 
 		LynxStructure* _structures;
 		int _size;
