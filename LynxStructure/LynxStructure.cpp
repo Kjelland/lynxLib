@@ -490,7 +490,7 @@ namespace LynxStructureSpace
 			}
 
 			_structures = tempStructs;
-			tempStructs = nullptr;
+			tempStructs = LYNX_NULL;
 		}
 
 		LynxID tempID = LynxID( this->_deviceInfo.deviceID, _structType, _structInstance );
@@ -503,6 +503,8 @@ namespace LynxStructureSpace
 	int LynxHandler::scanRequest(char* dataBuffer)
 	{
 		int index = 0;
+		dataBuffer[index] = char(LYNX_INTERNAL_DATAGRAM);
+		index++;
 		dataBuffer[index] = char(eLynxRequest);
 		index++;
 		dataBuffer[index] = char(eRqDeviceInfo);
@@ -522,6 +524,13 @@ namespace LynxStructureSpace
 
 		dataBuffer[index] = char(this->_deviceInfo.deviceID);
 		index++;
+
+		char tempVersion[4] = LYNX_VERSION;
+		for (int i = 0; i < 4; i++)
+		{
+			dataBuffer[index] = tempVersion[i];
+			index++;
+		}
 
 		char checksum = 0;
 		for (int i = 0; i < index; i++)
@@ -548,18 +557,22 @@ namespace LynxStructureSpace
 
 	int LynxHandler::fromBuffer(const char * dataBuffer, LynxIpAddress ipAddress)
 	{
-		if (dataBuffer[0] > eSsEndOfReserve)
+		if (dataBuffer[0] == char(LYNX_INTERNAL_DATAGRAM))
+		{
+			return handleInternalDatagram(dataBuffer, ipAddress);
+		}
+		else
 		{
 			return datagramFromBuffer(dataBuffer);
 		}
-		else if (dataBuffer[0] == eLynxRequest)
-		{
-			return handleRequest(dataBuffer, ipAddress);
-		}
-		else if (dataBuffer[0] == eLynxResponse)
-		{
-			return handleResponse(dataBuffer, ipAddress);
-		}
+		//else if (dataBuffer[0] == eLynxRequest)
+		//{
+		// return handleRequest(dataBuffer, ipAddress);
+		//}
+		//else if (dataBuffer[0] == eLynxResponse)
+		//{
+		//	return handleResponse(dataBuffer, ipAddress);
+		//}
 
 		return -1;
 
@@ -623,6 +636,8 @@ namespace LynxStructureSpace
 		_newScanRequest = false;
 
 		int index = 0;
+		dataBuffer[index] = LYNX_INTERNAL_DATAGRAM;
+		index++;
 		dataBuffer[index] = eLynxResponse;
 		index++;
 		dataBuffer[index] = eRqDeviceInfo;
@@ -642,6 +657,13 @@ namespace LynxStructureSpace
 
 		dataBuffer[index] = this->_deviceInfo.deviceID;
 		index++;
+
+		char tempVersion[4] = LYNX_VERSION;
+		for (int i = 0; i < 4; i++)
+		{
+			dataBuffer[index] = tempVersion[i];
+			index++;
+		}
 
 		char checksum = 0;
 		for (int i = 0; i < index; i++)
@@ -669,9 +691,29 @@ namespace LynxStructureSpace
 		return -1;
 	}
 
+	int LynxHandler::handleInternalDatagram(const char * dataBuffer, LynxIpAddress ipAddress)
+	{
+		switch (StandardStructIDs(dataBuffer[1]))
+		{
+		case LynxStructureSpace::eLynxRequest:
+			{
+				this->handleRequest(dataBuffer, ipAddress);
+			}
+			break;
+		case LynxStructureSpace::eLynxResponse:
+			{
+				this->handleResponse(dataBuffer, ipAddress);
+			}
+			break;
+		default:
+			return -1;
+			break;
+		}
+	}
+
 	int LynxHandler::handleRequest(const char * dataBuffer, LynxIpAddress ipAddress)
 	{
-		if (dataBuffer[1] == eRqDeviceInfo)
+		if (dataBuffer[2] == eRqDeviceInfo)
 		{
 			LynxDeviceInfo tempInfo = receiveScanResponse(dataBuffer, ipAddress);
 
@@ -688,7 +730,7 @@ namespace LynxStructureSpace
 
 	int LynxHandler::handleResponse(const char * dataBuffer, LynxIpAddress ipAddress)
 	{
-		if (dataBuffer[1] == eRqDeviceInfo)
+		if (dataBuffer[2] == eRqDeviceInfo)
 		{
 			LynxDeviceInfo tempInfo = receiveScanResponse(dataBuffer, ipAddress);
 
@@ -735,7 +777,7 @@ namespace LynxStructureSpace
 	LynxDeviceInfo LynxHandler::receiveScanResponse(const char * dataBuffer, LynxIpAddress ipAddress)
 	{
 		LynxDeviceInfo response;
-		int index = 2;
+		int index = 3;
 		for (int i = 0; i < 20; i++)
 		{
 			if ((dataBuffer[index] == '\0') || (i == 19))
@@ -750,6 +792,12 @@ namespace LynxStructureSpace
 
 		response.deviceID = dataBuffer[index];
 		index++;
+
+		for (int i = 0; i < 4; i++)
+		{
+			response.lynxVersion[i] = dataBuffer[index];
+			index++;
+		}
 
 		response.ipAddress = ipAddress;
 
@@ -789,5 +837,3 @@ namespace LynxStructureSpace
 	}
 
 }
-
-// temp |= ((uint16_t(dataBuffer[index]) << (n * 8)) & (uint16_t(0xFF) << (n * 8)));
