@@ -1,9 +1,11 @@
 #pragma once
 #include <stdint.h>
-#define LYNX_VERSION { 1, 2, 0, 0 }
+#define LYNX_VERSION { 1, 2, 0, 1 }
 
 #ifndef LYNX_NULL
 #ifdef TI
+typedef uint16_t uint8_t;
+typedef int16_t int8_t;
 #define LYNX_NULL 0
 #else
 #define LYNX_NULL nullptr
@@ -62,52 +64,15 @@ namespace LynxStructureSpace
 	};
 
 	//----------------------------------------------- Structures ------------------------------------------------------------
-	struct Union_8_32
-	{
-		union Data
-		{
-			uint32_t data_32;
-			unsigned char data_8[4];
-		}data;
+	//struct Union_8_32
+	//{
 
-		Union_8_32() { data.data_32 = 0; };
+	//};
 
-		Union_8_32(uint32_t _data) { data.data_32 = _data; };
-
-		Union_8_32(const unsigned char _data[4])
-		{
-			for (int i = 0; i < 4; i++)
-			{
-				data.data_8[i] = _data[i];
-			}
-		};
-
-		Union_8_32(char ip0, char ip1, char ip2, char ip3)
-		{
-			data.data_32 = 1;
-
-			if (data.data_8[0] == 1)	// Little endian
-			{
-				data.data_8[0] = ip3;
-				data.data_8[1] = ip2;
-				data.data_8[2] = ip1;
-				data.data_8[3] = ip0;
-			}
-			else						// Big endian
-			{
-				data.data_8[0] = ip0;
-				data.data_8[1] = ip1;
-				data.data_8[2] = ip2;
-				data.data_8[3] = ip3;
-			}
-
-		};
-	};
-
-	struct LynxVersion
-	{
-		const char version[4] = LYNX_VERSION;
-	};
+	//struct LynxVersion
+	//{
+	//	const char version[4] = LYNX_VERSION;
+	//};
 
 	struct LynxID
 	{
@@ -165,9 +130,47 @@ namespace LynxStructureSpace
 		int size;
 	};
 
-	struct LynxIpAddress : public Union_8_32
+	struct LynxIpAddress
 	{
-		using Union_8_32::Union_8_32;
+		union Data
+		{
+			uint32_t data_32;
+			unsigned char data_8[4];
+		}data;
+
+		LynxIpAddress() { data.data_32 = 0; };
+
+		LynxIpAddress(uint32_t _data) { data.data_32 = _data; };
+
+		LynxIpAddress(const unsigned char _data[4])
+		{
+			for (int i = 0; i < 4; i++)
+			{
+				data.data_8[i] = _data[i];
+			}
+		};
+
+		LynxIpAddress(char ip0, char ip1, char ip2, char ip3)
+		{
+			data.data_32 = 1;
+
+			if (data.data_8[0] == 1)	// Little endian
+			{
+				data.data_8[0] = ip3;
+				data.data_8[1] = ip2;
+				data.data_8[2] = ip1;
+				data.data_8[3] = ip0;
+			}
+			else						// Big endian
+			{
+				data.data_8[0] = ip0;
+				data.data_8[1] = ip1;
+				data.data_8[2] = ip2;
+				data.data_8[3] = ip3;
+			}
+
+		};
+
 	};
 
 	//struct LynxIpAddress
@@ -216,10 +219,14 @@ namespace LynxStructureSpace
 	struct LynxDeviceInfo
 	{
 		LynxDeviceInfo()
-			: lynxVersion{ 0,0,0,0 }
+			// : lynxVersion { 0,0,0,0 }
 		{
 			deviceName[0] = '\0';
 			deviceID = 0;
+			for (int i = 0; i < 4; i++)
+			{
+				lynxVersion[i] = 0;
+			}
 			ipAddress = LynxIpAddress();
 			newDevice = false;
 		};

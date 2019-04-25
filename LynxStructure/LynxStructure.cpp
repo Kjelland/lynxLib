@@ -565,16 +565,6 @@ namespace LynxStructureSpace
 		{
 			return datagramFromBuffer(dataBuffer);
 		}
-		//else if (dataBuffer[0] == eLynxRequest)
-		//{
-		// return handleRequest(dataBuffer, ipAddress);
-		//}
-		//else if (dataBuffer[0] == eLynxResponse)
-		//{
-		//	return handleResponse(dataBuffer, ipAddress);
-		//}
-
-		return -1;
 
 	}
 
@@ -697,17 +687,14 @@ namespace LynxStructureSpace
 		{
 		case LynxStructureSpace::eLynxRequest:
 			{
-				this->handleRequest(dataBuffer, ipAddress);
+				return this->handleRequest(dataBuffer, ipAddress);
 			}
-			break;
 		case LynxStructureSpace::eLynxResponse:
 			{
-				this->handleResponse(dataBuffer, ipAddress);
+				return this->handleResponse(dataBuffer, ipAddress);
 			}
-			break;
 		default:
 			return -1;
-			break;
 		}
 	}
 
