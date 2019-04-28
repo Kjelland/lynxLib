@@ -1,6 +1,10 @@
+//------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------- Version 1.2.0.3 ----------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------
+
 #pragma once
 #include <stdint.h>
-#define LYNX_VERSION { 1, 2, 0, 1 }
+#define LYNX_VERSION { 1, 2, 0, 2 }
 
 #ifndef LYNX_NULL
 #ifdef TI
@@ -12,7 +16,11 @@ typedef int16_t int8_t;
 #endif
 #endif // !NULLPTR
 
-#define LYNX_INTERNAL_DATAGRAM 255
+#define LYNX_INTERNAL_DATAGRAM char(255)
+
+#define LYNX_ID_BYTES 3
+#define LYNX_INDEXER_BYTES 2
+#define LYNX_CHECKSUM_BYTES 1
 
 namespace LynxStructureSpace
 {
@@ -81,53 +89,40 @@ namespace LynxStructureSpace
 			deviceID = 0;
 			structTypeID = 0;
 			structInstanceID = 0;
-		};
-		LynxID(uint8_t _deviceID, uint8_t _structTypeID, uint8_t _structInstanceID)
+			// totalLength = 0;
+        }
+
+        LynxID(uint8_t _deviceID, uint8_t _structTypeID, uint8_t _structInstanceID)
 		{
 			deviceID = _deviceID;
 			structTypeID = _structTypeID;
 			structInstanceID = _structInstanceID;
-		};
+			// totalLength = _totalLength;
+        }
+
 		uint8_t deviceID;			// Identifies the current machine
 		uint8_t structTypeID;		// Identifies the type of struct
 		uint8_t structInstanceID;	// Identifies the instance of the struct
+		// int totalLength;
 	};
 
 	struct StructItem
 	{
 		StructItem(const char _name[], LynxDataType _dataType)
-			: name( _name ), dataType( _dataType ) {};
+            : name( _name ), dataType( _dataType ) {}
 		const char* name;
 		LynxDataType dataType;
-	};
+    };
 
 	struct StructDefinition
 	{
-		StructDefinition(const char _structName[], const LynxStructMode _structMode, const StructItem* _structItems, int _size = 0) 
-			: structName( _structName ), structMode( _structMode ), structItems( _structItems )
-		{
-			if ((_size > 0) || (_structMode == eArrayMode))
-			{
-				size = _size;
-			}
-			else
-			{
-				for (int i = 0; i < 256; i++)
-				{
-					if (_structItems[i].dataType == eEndOfList)
-					{
-						size = i;
-						return;
-					}
-				}
-				size = 0;
-			}
-		};
+		StructDefinition(const char _structName[], const LynxStructMode _structMode, const StructItem* _structItems, int _size = 0);
 
 		const char* structName;
 		const LynxStructMode structMode;
 		const StructItem* structItems;
-		int size;
+		int size;							// Number of elements in the list
+		int transferSize = 0;				// Total data transfer size in bytes (not including identifiers and checksum)
 	};
 
 	struct LynxIpAddress
@@ -138,9 +133,9 @@ namespace LynxStructureSpace
 			unsigned char data_8[4];
 		}data;
 
-		LynxIpAddress() { data.data_32 = 0; };
+        LynxIpAddress() { data.data_32 = 0; }
 
-		LynxIpAddress(uint32_t _data) { data.data_32 = _data; };
+        LynxIpAddress(uint32_t _data) { data.data_32 = _data; }
 
 		LynxIpAddress(const unsigned char _data[4])
 		{
@@ -148,9 +143,9 @@ namespace LynxStructureSpace
 			{
 				data.data_8[i] = _data[i];
 			}
-		};
+        }
 
-		LynxIpAddress(char ip0, char ip1, char ip2, char ip3)
+        LynxIpAddress(unsigned char ip0, unsigned char ip1, unsigned char ip2, unsigned char ip3)
 		{
 			data.data_32 = 1;
 
@@ -169,52 +164,9 @@ namespace LynxStructureSpace
 				data.data_8[3] = ip3;
 			}
 
-		};
+        }
 
 	};
-
-	//struct LynxIpAddress
-	//{
-	//	union Address
-	//	{
-	//		uint32_t ip_32;
-	//		unsigned char ip_8[4];
-	//	}address;
-
-	//	LynxIpAddress() { address.ip_32 = 0; };
-
-	//	LynxIpAddress(uint32_t ipAddress) { address.ip_32 = ipAddress; };
-
-	//	LynxIpAddress(const unsigned char ipAddress[4])
-	//	{
-	//		for (int i = 0; i < 4; i++)
-	//		{
-	//			address.ip_8[i] = ipAddress[i];
-	//		}
-	//	};
-
-	//	LynxIpAddress(char ip0, char ip1, char ip2, char ip3)
-	//	{
-	//		address.ip_32 = 1;
-
-	//		if (address.ip_8[0] == 1)	// Little endian
-	//		{
-	//			address.ip_8[0] = ip3;
-	//			address.ip_8[1] = ip2;
-	//			address.ip_8[2] = ip1;
-	//			address.ip_8[3] = ip0;
-	//		}
-	//		else						// Big endian
-	//		{
-	//			address.ip_8[0] = ip0;
-	//			address.ip_8[1] = ip1;
-	//			address.ip_8[2] = ip2;
-	//			address.ip_8[3] = ip3;
-	//		}
-	//		
-	//	};
-	//	
-	//};
 
 	struct LynxDeviceInfo
 	{
@@ -229,7 +181,7 @@ namespace LynxStructureSpace
 			}
 			ipAddress = LynxIpAddress();
 			newDevice = false;
-		};
+        }
 
 		char deviceName[20];
 		uint8_t deviceID;
@@ -249,18 +201,18 @@ namespace LynxStructureSpace
 			_list = LYNX_NULL;
 			_size = 0;
 			_reservedSize = 0;
-		};
+        }
 
 		LynxList(int size)
 		{
 			this->reserve(size);
-		};
+        }
 
 		LynxList(const LynxList<T>& list)
 		{
 			_list = LYNX_NULL;
 			*this = list;
-		};
+        }
 
 		~LynxList()
 		{
@@ -269,7 +221,7 @@ namespace LynxStructureSpace
 				delete[] _list;
 				_list = LYNX_NULL;
 			}
-		};
+        }
 
 		void operator = (const LynxList<T>& list)
 		{
@@ -281,7 +233,7 @@ namespace LynxStructureSpace
 			}
 
 			this->_size = list._size;
-		};
+        }
 
 		void reserve(int size)
 		{
@@ -294,7 +246,7 @@ namespace LynxStructureSpace
 			_size = 0;
 			_reservedSize = size;
 			_list = new T[size];
-		};
+        }
 
 		int appendItem(const T& item) // Adds a new item at the end of the list and populates it with "item". Returns index of appended item if successful, -1 if unsuccessful
 		{
@@ -307,7 +259,7 @@ namespace LynxStructureSpace
 
 			_list[index] = item;
 			return (index);
-		};
+        }
 
 		int appendItem() // Adds a new empty instance at the end of the list. Returns index of appended item if successful, -1 if unsuccessful
 		{
@@ -336,7 +288,7 @@ namespace LynxStructureSpace
 			_list[_size - 1] = T();
 
 			return (_size - 1);
-		};
+        }
 
 		int removeItem(int index)	// Removes the indexed item and shifts the remaining items to fill.
 									// Returns number of remaining items if successful, -1 if failed
@@ -359,7 +311,7 @@ namespace LynxStructureSpace
 			}
 
 			return -1;
-		};
+        }
 
 		void deleteList()
 		{
@@ -370,14 +322,14 @@ namespace LynxStructureSpace
 				delete[] _list;
 				_list = LYNX_NULL;
 			}
-		};
+        }
 
 		T& at(int index)
 		{
 			return _list[index];
-		};
+        }
 
-		int getSize() { return _size; };
+        int getSize() { return _size; }
 
 	protected:
 		T* _list;
@@ -403,7 +355,7 @@ namespace LynxStructureSpace
 			_structDefinition = LYNX_NULL;
 			// _structName = LYNX_NULL;
 			_dataChanged = false;
-		};
+        }
 
 		~LynxStructure()
 		{
@@ -412,7 +364,7 @@ namespace LynxStructureSpace
 				delete[] data;
 				data = LYNX_NULL;
 			}
-		};
+        }
 
 		void init(const StructDefinition* structDefinition, LynxID _lynxID);
 
@@ -422,9 +374,16 @@ namespace LynxStructureSpace
 
 		void clear();							// sets all elements to 0
 
-		const StructDefinition* structDefinition() { return _structDefinition; };
+        const StructDefinition* structDefinition() { return _structDefinition; }
 
-		int getSize() { return this->_structDefinition->size; };
+        int getSize() { return this->_structDefinition->size; } // Returns number of elements in struct
+
+		int getIndexingSize() { return this->indexingSize; } // Returns number of bytes per index 
+
+		void* getDataPointer() { return data; };
+
+		// Returns the total size of the datapackage in bytes
+		int getTransferSize();
 
 		bool dataChanged();
 
@@ -451,8 +410,8 @@ namespace LynxStructureSpace
 				return -3;
 			}
 
-			T* pDest = (T*)(target);
-			T* pSrc = (T*)(this->data);
+            T* pDest = (T*)(target);
+            T* pSrc = (T*)(this->data);
 
 			for (int i = 0; i < size; i++)
 			{
@@ -511,7 +470,7 @@ namespace LynxStructureSpace
 
 			this->_dataChanged = false;
 			
-			return *(T*)(data + offset);
+            return *((T*)(data + offset));
 
 		}
 
@@ -552,6 +511,10 @@ namespace LynxStructureSpace
 			}
 		}
 
+		static int checkLocalSize(LynxDataType dataType);
+
+		static int checkTransferSize(LynxDataType dataType);
+
 	private:
 		// const char* _structName;
 		
@@ -565,10 +528,6 @@ namespace LynxStructureSpace
 		bool _dataChanged;
 
 		const StructDefinition* _structDefinition;
-
-		int checkLocalSize(LynxDataType dataType);
-
-		int checkTransferSize(LynxDataType dataType);
 
 		int writeVarToBuffer(char* dataBuffer, int bufferIndex, int lynxIndex);
 
@@ -609,7 +568,7 @@ namespace LynxStructureSpace
 			// _newScanResponses = 0;
 			_newScanRequest = false;
 			this->init(nStructs);
-		};
+        }
 
 		~LynxHandler()
 		{
@@ -618,13 +577,15 @@ namespace LynxStructureSpace
 				delete[] _structures;
 				_structures = LYNX_NULL;
 			}
-		};
+        }
 
 		void init(int nStructs = 0);
 
 		LynxID addStructure(uint8_t _structType, uint8_t _structInstance, const StructDefinition* _structDefinition);
 
 		int scanRequest(char* dataBuffer);
+
+		int copyData(LynxID source, LynxID target);
 
 		template <class T>
 		int copyDataToTarget(LynxID _lynxID, void* target, int size = 0)
@@ -709,13 +670,15 @@ namespace LynxStructureSpace
 
 		bool dataChanged(LynxID _lynxID);
 
-		int size() { return _size; };
+		int getTranferSize(LynxID _lynxID);
+
+        int size() { return _size; }
 
 		int newScanResponses(); // returns number of remaining scan responses
 
 		LynxDeviceInfo getScanResponse();
 
-		bool newScanRequest() { return _newScanRequest; };
+        bool newScanRequest() { return _newScanRequest; }
 
 		int sendScanResponse(char* dataBuffer);
 

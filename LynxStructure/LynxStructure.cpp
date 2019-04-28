@@ -1,4 +1,9 @@
+//------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------- Version 1.2.0.3 ----------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------
+
 #include"LynxStructure.h"
+
 
 // #include <exception>
 // #include <iostream>
@@ -127,14 +132,30 @@ namespace LynxStructureSpace
 
 	int LynxStructure::fromBuffer(const char *dataBuffer)
 	{
-		int lynxIndex = (int(dataBuffer[3]) & int(0xFF)) | ((int(dataBuffer[4]) & int(0xFF)) << 8);
+		int lynxIndex = (int(dataBuffer[LYNX_ID_BYTES]) & int(0xFF)) | ((int(dataBuffer[LYNX_ID_BYTES + 1]) & int(0xFF)) << 8);
 
-		int index = 5;
+		int index = LYNX_ID_BYTES + LYNX_INDEXER_BYTES;
 
 		int tempSize;
 
-		if (lynxIndex == 0)
+
+		if (lynxIndex == 0) // Copy all data
 		{
+			// Check data
+			char remoteChecksum = dataBuffer[index + _structDefinition->transferSize];
+			char localChecksum = 0;
+
+			for (int i = 0; i < (index + _structDefinition->transferSize); i++)
+			{
+				localChecksum += dataBuffer[i];
+			}
+
+			if (localChecksum != remoteChecksum)
+			{
+				return -2; // Return error code -2 if checksum is wrong
+			}
+
+			// Copy data
 			for (int i = 0; i < this->_structDefinition->size; i++)
 			{
 				tempSize = writeVarFromBuffer(dataBuffer, index, i);
@@ -144,12 +165,29 @@ namespace LynxStructureSpace
 					return tempSize;
 			}
 		}
-		else if (lynxIndex > 0)
+		else if (lynxIndex > 0) // Copy specific item
 		{
 			if (lynxIndex > this->_structDefinition->size)
 			{
 				return -1;
 			}
+
+			// Check data
+			int transferSize = checkTransferSize(_structDefinition->structItems[lynxIndex].dataType);
+			
+			char remoteChecksum = dataBuffer[index + transferSize];
+			char localChecksum = 0;
+
+			for (int i = 0; i < (index + transferSize); i++)
+			{
+				localChecksum += dataBuffer[i];
+			}
+
+			if (localChecksum != remoteChecksum)
+			{
+				return -2; // Return error code -2 if checksum is wrong
+			}
+
 
 			tempSize = writeVarFromBuffer(dataBuffer, index, lynxIndex - 1);
 			if (tempSize > 0)
@@ -157,30 +195,8 @@ namespace LynxStructureSpace
 			else
 				return tempSize;
 		}
-		else
-		{
-			return -1;
-		}
 
-
-
-		
-
-		// Check data
-		char checksum = 0;
-		for (int i = 0; i < index; i++)
-		{
-			checksum += dataBuffer[i];
-		}
-
-		if (checksum == dataBuffer[index])
-		{
-			return (index + 1);
-		}
-		else
-		{
-			return -2;
-		}
+        return tempSize;
 
 	}
 
@@ -193,14 +209,27 @@ namespace LynxStructureSpace
 		}
 	}
 
-	//const StructDefinition * LynxStructure::structDefinition()
+
+	// Returns the size of the datapackage in bytes (not including identifiers and checksum)
+	//int LynxStructure::getTransferSize() 
 	//{
-	//	StructDefinition temp;
-	//	temp.structName = this->_structName;
-	//	this->_structItems
-	//};
-	//	return temp;
+	//	int tempSize = 0;
+
+	//	for (int i = 0; i < this->_structDefinition->size; i++)
+	//	{
+	//		if (_structDefinition->structItems[i].dataType == eEndOfList)
+	//			break;
+
+	//		tempSize += checkTransferSize(_structDefinition->structItems[i].dataType);
+	//	}
+	//	return 0;
 	//}
+
+	// Returns the size of the datapackage in bytes (not including identifiers and checksum)
+	int LynxStructure::getTransferSize()
+	{
+		return (this->_structDefinition->transferSize + LYNX_ID_BYTES + LYNX_INDEXER_BYTES + LYNX_CHECKSUM_BYTES);
+	}
 
 	bool LynxStructure::dataChanged()
 	{
@@ -326,7 +355,7 @@ namespace LynxStructureSpace
 		switch (tempTransferSize)
 		{
 		case 1:
-			dataBuffer[index] = (char)getData<uint8_t>(lynxIndex);
+            dataBuffer[index] = char(getData<uint8_t>(lynxIndex));
 			index++;
 			break;
 		case 2:
@@ -334,7 +363,7 @@ namespace LynxStructureSpace
 			uint16_t temp = getData<uint16_t>(lynxIndex);
 			for (int n = 0; n < 2; n++)
 			{
-				dataBuffer[index] = (char)((temp >> (n * 8)) & 0xFF);
+                dataBuffer[index] = char((temp >> (n * 8)) & 0xFF);
 				index++;
 			}
 		}
@@ -344,7 +373,7 @@ namespace LynxStructureSpace
 			uint32_t temp = getData<uint32_t>(lynxIndex);
 			for (int n = 0; n < 4; n++)
 			{
-				dataBuffer[index] = (char)((temp >> (n * 8)) & 0xFF);
+                dataBuffer[index] = char((temp >> (n * 8)) & 0xFF);
 				index++;
 			}
 		}
@@ -354,7 +383,7 @@ namespace LynxStructureSpace
 			uint64_t temp = getData<uint64_t>(lynxIndex);
 			for (int n = 0; n < 8; n++)
 			{
-				dataBuffer[index] = (char)((temp >> (n * 8)) & 0xFF);
+                dataBuffer[index] = char((temp >> (n * 8)) & 0xFF);
 				index++;
 			}
 		}
@@ -543,6 +572,32 @@ namespace LynxStructureSpace
 		return index;
 	}
 
+	int LynxHandler::copyData(LynxID source, LynxID target)
+	{
+		if (source.structTypeID != target.structTypeID)
+			return -2;
+
+		int sourceIndex = indexFromID(source);
+		if (sourceIndex < 0)
+			return -1;
+
+		int targetIndex = indexFromID(target);
+		if (targetIndex < 0)
+			return -1;
+
+		int copySize = _structures[targetIndex].getSize()*_structures[targetIndex].getIndexingSize();
+
+		char* sourcePointer = (char*)(_structures[sourceIndex].getDataPointer());
+		char* targetPointer = (char*)(_structures[targetIndex].getDataPointer());
+
+		for (int i = 0; i < copySize; i++)
+		{
+			targetPointer[i] = sourcePointer[i];
+		}
+
+		return 0;
+	}
+
 	int LynxHandler::toBuffer(LynxID _lynxID, char * dataBuffer, SendMode sendMode, int subIndex)
 	{
 		int index = this->indexFromID(_lynxID);
@@ -578,6 +633,13 @@ namespace LynxStructureSpace
 		}
 
 		return this->_structures[index].dataChanged();
+	}
+
+	int LynxHandler::getTranferSize(LynxID _lynxID)
+	{
+		int index = indexFromID(_lynxID);
+
+		return this->_structures[index].getTransferSize();
 	}
 
 	int LynxHandler::newScanResponses()
@@ -626,7 +688,7 @@ namespace LynxStructureSpace
 		_newScanRequest = false;
 
 		int index = 0;
-		dataBuffer[index] = LYNX_INTERNAL_DATAGRAM;
+        dataBuffer[index] = LYNX_INTERNAL_DATAGRAM;
 		index++;
 		dataBuffer[index] = eLynxResponse;
 		index++;
@@ -645,7 +707,7 @@ namespace LynxStructureSpace
 			index++;
 		}
 
-		dataBuffer[index] = this->_deviceInfo.deviceID;
+        dataBuffer[index] = char(this->_deviceInfo.deviceID);
 		index++;
 
 		char tempVersion[4] = LYNX_VERSION;
@@ -777,7 +839,7 @@ namespace LynxStructureSpace
 			index++;
 		}
 
-		response.deviceID = dataBuffer[index];
+        response.deviceID = uint8_t(dataBuffer[index]);
 		index++;
 
 		for (int i = 0; i < 4; i++)
@@ -807,9 +869,9 @@ namespace LynxStructureSpace
 	{
 		LynxID tempID;
 
-		tempID.deviceID = dataBuffer[0];
-		tempID.structTypeID = dataBuffer[1];
-		tempID.structInstanceID = dataBuffer[2];
+        tempID.deviceID = uint8_t(dataBuffer[0]);
+        tempID.structTypeID = uint8_t(dataBuffer[1]);
+        tempID.structInstanceID = uint8_t(dataBuffer[2]);
 
 		int index = this->indexFromID(tempID);
 
@@ -821,6 +883,43 @@ namespace LynxStructureSpace
 		}
 
 		return -1;
+	}
+
+	StructDefinition::StructDefinition(const char _structName[], const LynxStructMode _structMode, const StructItem * _structItems, int _size)
+		: structName(_structName), structMode(_structMode), structItems(_structItems)
+	{
+		if (_structMode == eArrayMode)
+		{
+			size = _size;
+			transferSize = _size * LynxStructure::checkTransferSize(_structItems[0].dataType);
+		}
+		else if (_size > 0)
+		{
+			transferSize = 0;
+			size = _size;
+			for (int i = 0; i < size; i++)
+			{
+				transferSize += LynxStructure::checkTransferSize(_structItems[i].dataType);
+			}
+		}
+		else
+		{
+			transferSize = 0;
+
+			for (int i = 0; i < 256; i++)
+			{
+				if (_structItems[i].dataType == eEndOfList)
+				{
+					size = i;
+					return;
+				}
+
+				transferSize += LynxStructure::checkTransferSize(_structItems[i].dataType);
+			}
+
+			transferSize = 0;
+			size = 0;
+		}
 	}
 
 }
