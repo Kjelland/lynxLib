@@ -1,4 +1,12 @@
+//-------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------ Version 1.0.0.1 --------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
 #pragma once
+
+#ifndef NULL
+#define NULL nullptr
+#endif //NULL
 
 template <class T>
 class RingBuffer
@@ -6,15 +14,16 @@ class RingBuffer
 public:
 	RingBuffer()
 	{
-		_buffer = nullptr;
+		_buffer = NULL;
 		_reservedSize = 0;
 		_writeIndex = 0;
 		_readIndex = 0;
+		_count = 0;
 	}
 
 	RingBuffer(int size)
 	{
-		_buffer = nullptr;
+		_buffer = NULL;
 
 		this->init(size);
 	}
@@ -24,7 +33,7 @@ public:
 		if (_buffer)
 		{
 			delete[] _buffer;
-			_buffer = nullptr;
+			_buffer = NULL;
 		}
 	}
 
@@ -35,13 +44,14 @@ public:
 		if (_buffer)
 		{
 			delete[] _buffer;
-			_buffer = nullptr;
+			_buffer = NULL;
 		}
 
 		_buffer = new T[size];
 
 		if (_buffer)
 		{
+			_count = 0;
 			_writeIndex = 0;
 			_readIndex = 0;
 			_reservedSize = size;
@@ -100,27 +110,40 @@ public:
 	}
 
 	// Writes one element "source" to the buffer
-	void write(T source)
+	// Returns true if the buffer is overflowing
+	bool write(T source)
 	{
 		_buffer[_writeIndex] = source;
-
-		if (_count < _reservedSize)
-			_count++;
 
 		_writeIndex++;
 		if (_writeIndex >= _reservedSize)
 			_writeIndex = 0;
+
+		if (_count >= _reservedSize)
+		{
+			return true;
+		}
+
+		_count++;
+
+		return false;
+			
 	}
 
 	// Writes "count" elements from "source" to the buffer.
-	// Returns elements written.
+	// Returns -1 * elements written if the buffer is overflowing, otherwise it returns elements written.
 	int write(T* source, int count)
 	{
+		bool overflow;
+
 		for (int i = 0; i < count; i++)
 		{
-			this->write(source[i]);
+			overflow = this->write(source[i]);
 		}
 
+		if(overflow)
+			return (~count + 1);
+		
 		return count;
 	}
 
