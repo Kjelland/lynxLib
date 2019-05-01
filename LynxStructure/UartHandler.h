@@ -1,9 +1,9 @@
 //-------------------------------------------------------------------------------------------
-//------------------------------------- Version 0.1.0.0 -------------------------------------
+//------------------------------------- Version 0.1.0.2 -------------------------------------
 //-------------------------------------------------------------------------------------------
 
 #pragma once
-//#define QT_LYNX
+// #define QT_LYNX
 
 #ifdef ARDUINO
 #include <arduino.h>
@@ -24,7 +24,7 @@
 
 
 #include "LynxStructure.h"
-#include "RingBuffer.h"
+// #include "RingBuffer.h"
 
 #define DATABUFFER_SIZE 64
 #define REMOTE_ID 2
@@ -33,58 +33,69 @@
 
 enum E_State
 {
-	eIdle = 0,
-	eScanning,
-	eReading,
+    eIdle = 0,
+    eScanning,
+    eReading,
 };
 
 class UartHandler
 {
+public:
+    UartHandler();
+
+    // Opens the serial connection. Returns true if it was opened successfully.
+    bool open(int port, int baudRate);
+
+    // Links between received data and lynx. Run this as often as possible
+    void update(LynxStructureSpace::LynxHandler& lynxHandler, const LynxStructureSpace::LynxID& lynxID);
+
+    // Sends content of the lynx id to the serial port
+    int send(LynxStructureSpace::LynxHandler& lynxHandler, const LynxStructureSpace::LynxID& lynxID);
+
+    // Returns true if new data has been received and added to lynx
+    bool newData();
+
+    // returns one character from the buffer at "index"
+    char bufferAt(int index);
+
+    // Returns number of communication errors since strtup
+    int errorCount() { return _errorCounter; }
+
+
 private:
-	int serPort;
-	E_State state = eIdle;
+    // Reads a single character from serial and returns it
+    char read();
 
-	int bytesIn = 0;
+    // Reads "size" bytes from the serial port, and puts it in buffer
+    int read(char* buffer, int size);
 
-	char dataBuffer[DATABUFFER_SIZE];
-	int index = 0;
+    // Writes "size" number of bytes from buffer to the serial port
+    int write(const char* buffer, int size);
+
+    // Returns number of bytes on port
+    int bytesAvailable();
+
+    E_State _state = eIdle;
+    bool _newData = false;
+    int _errorCounter = 0;
+    int _port;
+    int _bytesIn = 0;
+    char _dataBuffer[DATABUFFER_SIZE];
+    int _index = 0;
 
 #ifdef QT_LYNX
+private:
     QSerialPort serialPort;
 #endif //QT_LYNX
 
 #ifdef TI
-	// TODO MAGNUS
-	// Write here if you need stuff in the class
-    SCI_Handle sciHandle;
-    CLK_Handle clkHandle;
 public:
     RingBuffer <char>txBuffer;
     RingBuffer <char>rxBuffer;
     UartHandler(SCI_Handle _sciHandle,CLK_Handle _clkHandle);
-#endif //TI
-
-public:
-    UartHandler();
-
-	bool open(int port, int baudRate);
-
-	void update(LynxStructureSpace::LynxHandler& lynxHandler, const LynxStructureSpace::LynxID& _lynxID);
-    int send(LynxStructureSpace::LynxHandler& lynxHandler, const LynxStructureSpace::LynxID& _lynxID);
-
-    bool newData();
-
-    char bufferAt(int index);
-
-    int errorCount() { return errorCounter; }
 private:
-    char readByte();
-    int readBytes(char* buffer, int size);
-    int writeBytes(const char* buffer, int size);
-    int writeBytes(const char* buffer, int size,SCI_Handle sciHandle);
-
-    int bytesAvailable();
-    bool _newData = false;
-    int errorCounter = 0;
+    SCI_Handle sciHandle;
+    CLK_Handle clkHandle;
+    // int writeBytes(const char* buffer, int size,SCI_Handle sciHandle);
+#endif //TI
 };
-
