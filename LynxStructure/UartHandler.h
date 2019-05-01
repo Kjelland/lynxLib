@@ -3,8 +3,7 @@
 //-------------------------------------------------------------------------------------------
 
 #pragma once
-
-#define QT_LYNX
+//#define QT_LYNX
 
 #ifdef ARDUINO
 #include <arduino.h>
@@ -18,10 +17,14 @@
 #ifdef TI
 // TODO MAGNUS
 // Write here if you need includes
+#include "DSP28x_Project.h"
+#include   "f2802x_common/include/sci_CPP.h"
+#include   "f2802x_common/include/clk_CPP.h"
 #endif // TI
 
 
 #include "LynxStructure.h"
+#include "RingBuffer.h"
 
 #define DATABUFFER_SIZE 64
 #define REMOTE_ID 2
@@ -39,7 +42,6 @@ class UartHandler
 {
 private:
 	int serPort;
-
 	E_State state = eIdle;
 
 	int bytesIn = 0;
@@ -54,6 +56,12 @@ private:
 #ifdef TI
 	// TODO MAGNUS
 	// Write here if you need stuff in the class
+    SCI_Handle sciHandle;
+    CLK_Handle clkHandle;
+public:
+    RingBuffer <char>txBuffer;
+    RingBuffer <char>rxBuffer;
+    UartHandler(SCI_Handle _sciHandle,CLK_Handle _clkHandle);
 #endif //TI
 
 public:
@@ -73,6 +81,8 @@ private:
     char readByte();
     int readBytes(char* buffer, int size);
     int writeBytes(const char* buffer, int size);
+    int writeBytes(const char* buffer, int size,SCI_Handle sciHandle);
+
     int bytesAvailable();
     bool _newData = false;
     int errorCounter = 0;

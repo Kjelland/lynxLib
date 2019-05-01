@@ -207,16 +207,19 @@ int UartHandler::bytesAvailable()
 
 #ifdef TI
 
-UartHandler::UartHandler()
+UartHandler::UartHandler(SCI_Handle _sciHandle,CLK_Handle _clkHandle)
 {
     // TODO MAGNUS
     // Write here if you need something in the constructor
-
+    this->sciHandle = _sciHandle;
+    this->clkHandle=_clkHandle;
     // Clear buffer
     for(int i = 0; i < DATABUFFER_SIZE; i++)
     {
         dataBuffer[i] = 0;
     }
+    rxBuffer.init(100);
+    txBuffer.init(100);
 }
 
 bool UartHandler::open(int port, int baudRate)
@@ -224,14 +227,59 @@ bool UartHandler::open(int port, int baudRate)
 	serPort = port;
 
 	// TODO MAGNUS
-	// Open serial port "serPort" with baud-rate "baudRate"
+	// Open serial port "serPort" with baud-rate "baudRate" inclde switch case for baud
 	// Return true if success, false if failure
+    // enable the SCI-A clock
+        CLK_enableSciaClock(clkHandle);
+
+        // disable parity
+        SCI_disableParity(sciHandle);
+
+        // 1 stop bit
+        SCI_setNumStopBits(sciHandle, SCI_NumStopBits_One);
+
+        // 8 data bits
+        SCI_setCharLength(sciHandle, SCI_CharLength_8_Bits);
+
+        // 9600 baud rate
+        SCI_setBaudRate(sciHandle, SCI_BaudRate_9_6_kBaud);
+
+        // enable free run - continue SCI operation regardless of emulation suspend
+        SCI_setPriority(sciHandle, SCI_Priority_FreeRun);
+
+        // enable TX and RX
+        SCI_enableTx(sciHandle);
+        SCI_enableRx(sciHandle);
+
+        SCI_enableTxInt(sciHandle);
+        SCI_enableRxInt(sciHandle);
+
+        // enable the SCI interface
+        SCI_enable(sciHandle);
+
+        // init FIFO
+        SCI_enableFifoEnh(sciHandle);
+        SCI_resetTxFifo(sciHandle);
+        SCI_clearTxFifoInt(sciHandle);
+        SCI_resetChannels(sciHandle);
+        SCI_setTxFifoIntLevel(sciHandle, SCI_FifoLevel_2_Words);
+        SCI_enableTxFifoInt(sciHandle);
+
+
+        SCI_resetRxFifo(sciHandle);
+        SCI_clearRxFifoInt(sciHandle);
+        SCI_setRxFifoIntLevel(sciHandle, SCI_FifoLevel_4_Words);
+        SCI_enableRxFifoInt(sciHandle);
+
+        return true;//success
+
 }
 
 char UartHandler::readByte()
 {
     // TODO MAGNUS
     // Read a single byte from the serial port and return it
+    return rxBuffer.read();
 }
 
 int UartHandler::readBytes(char* buffer, int size)
@@ -239,6 +287,7 @@ int UartHandler::readBytes(char* buffer, int size)
     // TODO MAGNUS
     // Read "size" number of bytes from the serial port and put them in "buffer".
     // Return number of bytes read, or a negative number if error
+    return rxBuffer.read(buffer,size);
 }
 
 int UartHandler::writeBytes(const char* buffer, int size)
@@ -246,6 +295,11 @@ int UartHandler::writeBytes(const char* buffer, int size)
     // TODO MAGNUS
     // Write "size" number of bytes from "buffer" to the serial port.
     // Return number of bytes written, or a negative number if error
+    //for (int i = 0; i < size; ++i)
+    {
+        txBuffer.write(buffer, size);
+    }
+    return true;
 }
 
 int UartHandler::bytesAvailable()
@@ -253,6 +307,7 @@ int UartHandler::bytesAvailable()
     // TODO MAGNUS
     // Probe the serial port for incoming bytes.
     // Return number of incoming bytes
+    return rxBuffer.count();
 }
 
 #endif //TI
