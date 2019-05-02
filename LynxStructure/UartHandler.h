@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------
-//------------------------------------- Version 0.1.0.2 -------------------------------------
+//------------------------------------- Version 0.1.0.3 -------------------------------------
 //-------------------------------------------------------------------------------------------
 
 #pragma once
@@ -18,16 +18,16 @@
 // TODO MAGNUS
 // Write here if you need includes
 #include "DSP28x_Project.h"
-#include   "f2802x_common/include/sci_CPP.h"
-#include   "f2802x_common/include/clk_CPP.h"
+#include   "f2802x_common/include/sci.h"
+#include   "f2802x_common/include/clk.h"
 #endif // TI
 
 
 #include "LynxStructure.h"
-// #include "RingBuffer.h"
+#include "RingBuffer.h"
 
 #define DATABUFFER_SIZE 64
-#define REMOTE_ID 2
+#define REMOTE_ID 1
 
 // #define LYNX_DEBUG
 
@@ -44,7 +44,7 @@ public:
     UartHandler();
 
     // Opens the serial connection. Returns true if it was opened successfully.
-    bool open(int port, int baudRate);
+    bool open(int port, uint32_t baudRate);
 
     // Links between received data and lynx. Run this as often as possible
     void update(LynxStructureSpace::LynxHandler& lynxHandler, const LynxStructureSpace::LynxID& lynxID);
@@ -90,12 +90,14 @@ private:
 
 #ifdef TI
 public:
+    void Init(SCI_Handle _sciHandle,CLK_Handle _clkHandle);
     RingBuffer <char>txBuffer;
     RingBuffer <char>rxBuffer;
-    UartHandler(SCI_Handle _sciHandle,CLK_Handle _clkHandle);
 private:
     SCI_Handle sciHandle;
     CLK_Handle clkHandle;
     // int writeBytes(const char* buffer, int size,SCI_Handle sciHandle);
 #endif //TI
+
 };
+
