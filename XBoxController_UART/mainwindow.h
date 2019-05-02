@@ -67,12 +67,16 @@ private:
 
     void mapXinputToLynx(XINPUT_GAMEPAD& controller, LynxHandler& lynxHandler, const LynxID& lynxID);
 
-    int _portSelectorIndex = 0;
+    // QTimer* comTimer = new QTimer(this);
+    QTimer comTimer;
 
-    static const int gamepadUpdate = 100; // Gamepad refresh rate in ms
-    static const int batteryUpdate = 50; // Factor of gamepad refresh rate
+    static const int comPortUpdate = 5000;  // How often to check for com ports in ms
+    static const int gamepadUpdate = 100;   // Gamepad refresh rate in ms
+    static const int batteryUpdate = 50;    // Factor of gamepad refresh rate
+    static const int uartUpdate = 1;        // UART refresh rate in ms
 
     QList<QSerialPortInfo> _serialPortInfo;
+    QSerialPortInfo _selectedPort;
 private slots:
     void processXinput();
     void runUart();
@@ -80,6 +84,7 @@ private slots:
     // void portSelector_select();
     void on_comboBox_portSelector_activated(int index);
     void on_pushButton_connectPort_clicked();
+    void checkPorts();
 };
 
 

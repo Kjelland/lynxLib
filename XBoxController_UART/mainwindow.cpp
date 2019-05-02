@@ -7,14 +7,13 @@ MainWindow::MainWindow(QWidget *parent) :
     out(stdout),
 #endif //LYNX_DEBUG
     ui(new Ui::MainWindow),
-    lynxHandler(DEVICE_ID, DEVICE_NAME)
+    lynxHandler(DEVICE_ID, DEVICE_NAME),
+    comTimer(this)
     // uartHandler(4, 9600)
 {
 #ifdef LYNX_DEBUG
     out << "Starting";
 #endif //LYNX_DEBUG
-
-
 
     lynxController = lynxHandler.addStructure(CONTROLLER_STRUCT, 1, &controllerDefinition);
     lynxController2 = lynxHandler.addStructure(CONTROLLER_STRUCT, 2, &controllerDefinition);
@@ -24,11 +23,13 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(xInputTimer, SIGNAL(timeout()), this, SLOT(processXinput()));
     connect(uartTimer, SIGNAL(timeout()), this, SLOT(runUart()));
+    connect(&comTimer, SIGNAL(timeout()), this, SLOT(checkPorts()));
 
     // connect(ui->comboBox_portSelector, SIGNAL(actvated()), this, SLOT(portSelector_click()));
 
     xInputTimer->start(gamepadUpdate);
-    uartTimer->start(1);
+    uartTimer->start(uartUpdate);
+    comTimer.start(comPortUpdate);
 
     ui->setupUi(this);
 
@@ -38,6 +39,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->controllerSelector->addItem("Controller 2");
     ui->controllerSelector->addItem("Controller 3");
     ui->controllerSelector->addItem("Controller 4");
+
+    checkPorts();
 }
 
 MainWindow::~MainWindow()
@@ -224,37 +227,18 @@ void MainWindow::mapXinputToLynx(XINPUT_GAMEPAD& controller, LynxHandler& lynxHa
 
 void MainWindow::on_comboBox_portSelector_activated(int index)
 {
-    if(index == _portSelectorIndex)
-    {
-        ui->comboBox_portSelector->clear();
-
-        _serialPortInfo = QSerialPortInfo::availablePorts();
-
-        for(int i = 0; i < _serialPortInfo.count(); i++)
-        {
-            ui->comboBox_portSelector->addItem(_serialPortInfo.at(i).description() + QString(" - ") + _serialPortInfo.at(i).portName());
-        }
-
-        // serialPortInfo.at(0).
-
-        _portSelectorIndex = _serialPortInfo.count();
-        ui->comboBox_portSelector->addItem("...Search...");
-    }
+    if(index < _serialPortInfo.count())
+        _selectedPort = _serialPortInfo.at(index);
 }
 
 void MainWindow::on_pushButton_connectPort_clicked()
 {
     if(!uartHandler.opened())
     {
-        _serialPortInfo = QSerialPortInfo::availablePorts();
-
-        int portCount = _serialPortInfo.count();
-        int selectedIndex = ui->comboBox_portSelector->currentIndex();
-
-        if(portCount <= selectedIndex)
+        if(_selectedPort.isNull() || _selectedPort.isBusy())
             return;
 
-        if(!uartHandler.open(_serialPortInfo.at(selectedIndex), 9600))
+        if(!uartHandler.open(_selectedPort, 9600))
             return;
 
         ui->pushButton_connectPort->setText("Disconnect");
@@ -264,4 +248,39 @@ void MainWindow::on_pushButton_connectPort_clicked()
         uartHandler.close();
         ui->pushButton_connectPort->setText("Connect");
     }
+}
+
+
+void MainWindow::checkPorts()
+{
+    int selectedIndex = 0; // ui->comboBox_portSelector->currentIndex();
+
+    // QString selectedPort = _selectedPort.portName();
+
+    ui->comboBox_portSelector->clear();
+
+    _serialPortInfo = QSerialPortInfo::availablePorts();
+
+    QString portName;
+
+    for(int i = 0; i < _serialPortInfo.count(); i++)
+    {
+        portName = _serialPortInfo.at(i).portName();
+
+        if(!portName.compare(_selectedPort.portName()))
+            selectedIndex = i;
+
+        portName += QString(" - ") + _serialPortInfo.at(i).description();
+
+        ui->comboBox_portSelector->addItem(portName);
+
+    }
+
+
+    if(_serialPortInfo.count())
+    {
+        ui->comboBox_portSelector->setCurrentIndex(selectedIndex);
+        _selectedPort = _serialPortInfo.at(selectedIndex);
+    }
+
 }
