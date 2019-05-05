@@ -15,11 +15,11 @@ UartHandler::UartHandler()
 
 bool UartHandler::open(int port, int baudRate)
 {
-	if (_open)
-		return false;
+    if (_open)
+        return false;
 
     _port = port;
-	_open = true;
+    _open = true;
 
     switch (this->_port)
     {
@@ -54,42 +54,42 @@ bool UartHandler::open(int port, int baudRate)
 
 void UartHandler::close()
 {
-	if (!_open)
-		return;
+    if (!_open)
+        return;
 
-	switch (this->_port)
-	{
-	case 0:
-	{
-		Serial.end();
-		break;
-	}
-	case 1:
-	{
-		Serial1.end();
-		break;
-	}
+    switch (this->_port)
+    {
+    case 0:
+    {
+        Serial.end();
+        break;
+    }
+    case 1:
+    {
+        Serial1.end();
+        break;
+    }
 #ifdef ARDUINO_MEGA
-	case 2:
-	{
-		Serial2.end();
-		break;
-	}
-	case 3:
-	{
-		Serial3.end();
-		break;
-	}
+    case 2:
+    {
+        Serial2.end();
+        break;
+    }
+    case 3:
+    {
+        Serial3.end();
+        break;
+    }
 #endif // ARDUINO_MEGA
-	}
+    }
 
-	_open = false;
+    _open = false;
 }
 
 char UartHandler::read()
 {
-	if (!_open)
-		return 0;
+    if (!_open)
+        return 0;
 
     switch (this->_port)
     {
@@ -111,7 +111,7 @@ char UartHandler::read()
         return Serial3.read();
     }
 #endif // ARDUINO_MEGA
-	default:
+    default:
         break;
     }
 
@@ -120,8 +120,8 @@ char UartHandler::read()
 
 int UartHandler::read(char* buffer, int size)
 {
-	if (!_open)
-		return -1;
+    if (!_open)
+        return -1;
 
     switch (this->_port)
     {
@@ -152,8 +152,8 @@ int UartHandler::read(char* buffer, int size)
 
 int UartHandler::write(const char* buffer, int size)
 {
-	if (!_open)
-		return -1;
+    if (!_open)
+        return -1;
 
     switch (this->_port)
     {
@@ -204,7 +204,7 @@ int UartHandler::bytesAvailable()
         return Serial3.available();
     }
 #endif // ARDUINO_MEGA
-	default:
+    default:
         break;
     }
 
@@ -294,98 +294,121 @@ int UartHandler::bytesAvailable()
 
 #ifdef TI
 
-UartHandler::UartHandler(SCI_Handle _sciHandle,CLK_Handle _clkHandle)
+UartHandler::UartHandler()
 {
     // TODO MAGNUS
     // Write here if you need something in the constructor
-    this->sciHandle = _sciHandle;
-    this->clkHandle=_clkHandle;
+
     // Clear buffer
     for(int i = 0; i < DATABUFFER_SIZE; i++)
     {
-        dataBuffer[i] = 0;
+        _dataBuffer[i] = 0;
     }
-    rxBuffer.init(100);
-    txBuffer.init(100);
+    rxBuffer.init(DATABUFFER_SIZE);
+    txBuffer.init(DATABUFFER_SIZE);
 }
-
+void UartHandler::init(SCI_Handle _sciHandle,CLK_Handle _clkHandle)
+{
+    this->sciHandle = _sciHandle;
+    this->clkHandle=_clkHandle;
+}
 bool UartHandler::open(int port, int baudRate)
 {
-    serPort = port;
+    if(_open)
+        return false;
+
+    _port = port;
 
     // TODO MAGNUS
     // Open serial port "serPort" with baud-rate "baudRate" inclde switch case for baud
     // Return true if success, false if failure
     // enable the SCI-A clock
-        CLK_enableSciaClock(clkHandle);
+    CLK_enableSciaClock(clkHandle);
+    //
+    //    // 1 stop bit,  No loopback
+    //    // No parity,8 char bits,
+    //    // async mode, idle-line protocol
+    SCI_disableParity(sciHandle);
+    SCI_setNumStopBits(sciHandle, SCI_NumStopBits_One);
+    SCI_setCharLength(sciHandle, SCI_CharLength_8_Bits);
 
-        // disable parity
-        SCI_disableParity(sciHandle);
+    // enable TX, RX, internal SCICLK,
+    // Disable RX ERR, SLEEP, TXWAKE
+    SCI_enableTx(sciHandle);
+    SCI_enableRx(sciHandle);
+    SCI_enableTxInt(sciHandle);
+    SCI_enableRxInt(sciHandle);
 
-        // 1 stop bit
-        SCI_setNumStopBits(sciHandle, SCI_NumStopBits_One);
+    //SCI_enableLoopBack(sciHandle);
 
-        // 8 data bits
-        SCI_setCharLength(sciHandle, SCI_CharLength_8_Bits);
+    // SCI BRR = LSPCLK/(SCI BAUDx8) - 1
+    SCI_setBaudRate(sciHandle, SCI_BaudRate_9_6_kBaud);
 
-        // 9600 baud rate
-        SCI_setBaudRate(sciHandle, SCI_BaudRate_9_6_kBaud);
+    SCI_enable(sciHandle);
+    //
+    //    return;
+    //}
+    //
+    //void scia_fifo_init()
+    //{
+    SCI_enableFifoEnh(sciHandle);
+    SCI_resetTxFifo(sciHandle);
+    SCI_clearTxFifoInt(sciHandle);
+    SCI_resetChannels(sciHandle);
+    SCI_setTxFifoIntLevel(sciHandle, SCI_FifoLevel_2_Words);
+    SCI_enableTxFifoInt(sciHandle);
 
-        // enable free run - continue SCI operation regardless of emulation suspend
-        SCI_setPriority(sciHandle, SCI_Priority_FreeRun);
-
-        // enable TX and RX
-        SCI_enableTx(sciHandle);
-        SCI_enableRx(sciHandle);
-
-        SCI_enableTxInt(sciHandle);
-        SCI_enableRxInt(sciHandle);
-
-        // enable the SCI interface
-        SCI_enable(sciHandle);
-
-        // init FIFO
-        SCI_enableFifoEnh(sciHandle);
-        SCI_resetTxFifo(sciHandle);
-        SCI_clearTxFifoInt(sciHandle);
-        SCI_resetChannels(sciHandle);
-        SCI_setTxFifoIntLevel(sciHandle, SCI_FifoLevel_2_Words);
-        SCI_enableTxFifoInt(sciHandle);
-
-
-        SCI_resetRxFifo(sciHandle);
-        SCI_clearRxFifoInt(sciHandle);
-        SCI_setRxFifoIntLevel(sciHandle, SCI_FifoLevel_4_Words);
-        SCI_enableRxFifoInt(sciHandle);
-
-        return true;//success
+    SCI_resetRxFifo(sciHandle);
+    SCI_clearRxFifoInt(sciHandle);
+    SCI_setRxFifoIntLevel(sciHandle, SCI_FifoLevel_2_Words);
+    SCI_enableRxFifoInt(sciHandle);
+    _open=true;
+    return true;//success
 
 }
+void UartHandler::close()
+{
+    if(!_open)
+        return;
 
-char UartHandler::readByte()
+    SCI_disableTx(sciHandle);
+    SCI_disableRx(sciHandle);
+    SCI_disableTxInt(sciHandle);
+    SCI_disableRxInt(sciHandle);
+    SCI_disable(sciHandle);
+    _open=false;
+
+}
+char UartHandler::read()
 {
     // TODO MAGNUS
     // Read a single byte from the serial port and return it
+    if(!_open)
+        return 0;
     return rxBuffer.read();
 }
 
-int UartHandler::readBytes(char* buffer, int size)
+int UartHandler::read(char* buffer, int size)
 {
     // TODO MAGNUS
     // Read "size" number of bytes from the serial port and put them in "buffer".
     // Return number of bytes read, or a negative number if error
+    if(!_open)
+           return -1;
     return rxBuffer.read(buffer,size);
 }
 
-int UartHandler::writeBytes(const char* buffer, int size)
+int UartHandler::write(const char* buffer, int size)
 {
     // TODO MAGNUS
     // Write "size" number of bytes from "buffer" to the serial port.
     // Return number of bytes written, or a negative number if error
     //for (int i = 0; i < size; ++i)
-    {
+    if(!_open)
+           return -1;
+
         txBuffer.write(buffer, size);
-    }
+
     return true;
 }
 
@@ -511,36 +534,36 @@ int UartHandler::bytesAvailable()
 
 bool UartHandler::opened()
 {
-	return _open;
+    return _open;
 }
 
 void UartHandler::update(LynxLib::LynxHandler& lynxHandler)
 {
-	if (!_open)
-		return;
+    if (!_open)
+        return;
 
-	_bytesIn = bytesAvailable();
+    _bytesIn = bytesAvailable();
 
-	if (_bytesIn < 0)
-	{
-		_errorCounter++;
-		return;
-	}
+    if (_bytesIn < 0)
+    {
+        _errorCounter++;
+        return;
+    }
 
-	switch (_state)
-	{
-	case eIdle:
-	{
-		if (_bytesIn > 0)
-		{
+    switch (_state)
+    {
+    case eIdle:
+    {
+        if (_bytesIn > 0)
+        {
             // _index = 0;
-			_state = eScanning;
-		}
+            _state = eScanning;
+        }
 
-		break;
-	}
-	case eScanning:
-	{
+        break;
+    }
+    case eScanning:
+    {
         if (_bytesIn > 0)
         {
             if(_shuffleBytes)
@@ -572,34 +595,34 @@ void UartHandler::update(LynxLib::LynxHandler& lynxHandler)
 
             _state = eReading;
             break;
-		}
+        }
 
-		break;
-	}
-	case eReading:
-	{
+        break;
+    }
+    case eReading:
+    {
 
         if (_bytesIn >= (lynxHandler.getTranferSize(_tempID) - 3))
-		{
+        {
             this->read(&(_dataBuffer[3]), (lynxHandler.getTranferSize(_tempID) - 3));
-			int bytesReceived = lynxHandler.fromBuffer(_dataBuffer);
+            int bytesReceived = lynxHandler.fromBuffer(_dataBuffer);
 
-			if (bytesReceived < 0)
-				_errorCounter++;
+            if (bytesReceived < 0)
+                _errorCounter++;
 
-			_state = eIdle;
-			_newData = true;
-		}
+            _state = eIdle;
+            _newData = true;
+        }
 
-		break;
-	}
-	default:
-	{
-		_state = eIdle;
-		_errorCounter++;
-		break;
-	}
-	}
+        break;
+    }
+    default:
+    {
+        _state = eIdle;
+        _errorCounter++;
+        break;
+    }
+    }
 }
 
 int UartHandler::send(LynxLib::LynxHandler & lynxHandler, const LynxLib::LynxID & _lynxID)

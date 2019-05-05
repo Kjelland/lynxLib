@@ -3,7 +3,7 @@
 //-------------------------------------------------------------------------------------------
 
 #pragma once
-#define QT_LYNX
+//#define QT_LYNX
 
 #ifdef ARDUINO
 #undef QT_LYNX
@@ -20,15 +20,15 @@
 // TODO MAGNUS
 // Write here if you need includes
 #include "DSP28x_Project.h"
-#include   "f2802x_common/include/sci_CPP.h"
-#include   "f2802x_common/include/clk_CPP.h"
+#include   "f2802x_common/include/sci.h"
+#include   "f2802x_common/include/clk.h"
 #endif // TI
 
 
 #include "LynxStructure.h"
 // #include "RingBuffer.h"
 
-#define DATABUFFER_SIZE 64
+#define DATABUFFER_SIZE 32
 #define REMOTE_ID 2
 
 // #define LYNX_DEBUG
@@ -110,9 +110,10 @@ private:
 
 #ifdef TI
 public:
-    RingBuffer <char>txBuffer;
-    RingBuffer <char>rxBuffer;
-    UartHandler(SCI_Handle _sciHandle,CLK_Handle _clkHandle);
+    LynxLib::LynxRingBuffer <char>txBuffer;
+    LynxLib::LynxRingBuffer <char>rxBuffer;
+    void init(SCI_Handle _sciHandle,CLK_Handle _clkHandle);
+    //UartHandler(SCI_Handle _sciHandle,CLK_Handle _clkHandle);
 private:
     SCI_Handle sciHandle;
     CLK_Handle clkHandle;

@@ -15,7 +15,7 @@
 #endif // !NULL
 
 #ifdef TI
-typedef uint16_t uint8_t;
+#include "DSP28x_Project.h"
 typedef int16_t int8_t;
 #endif //TI
 
@@ -382,7 +382,7 @@ namespace LynxLib
 		//		Returns -1 * elements written if the buffer is overflowing (data will be overwritten), otherwise it returns elements written.
 		// Overflow prevented:
 		//		Returns -1 * elements written if the buffer is full (data above max index will not be written), otherwise it returns elements written
-		int write(T* source, int count)
+		int write(const T* source, int count)
 		{
 			bool overflow;
 
