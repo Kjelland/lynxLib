@@ -1,20 +1,23 @@
-//------------------------------------------------------------------------------------------------------------------------------
-//--------------------------------------------------- Version 1.2.0.3 ----------------------------------------------------------
-//------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------- Version 1.3.0.0 ----------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------
 
 #pragma once
 #include <stdint.h>
-#define LYNX_VERSION { 1, 2, 0, 2 }
+#define LYNX_VERSION { 1, 3, 0, 0 }
 
-#ifndef LYNX_NULL
+#ifndef NULL
+#ifndef TI
+#define NULL nullptr
+#else
+#define NULL 0
+#endif // !TI
+#endif // !NULL
+
 #ifdef TI
 typedef uint16_t uint8_t;
 typedef int16_t int8_t;
-#define LYNX_NULL 0
-#else
-#define LYNX_NULL nullptr
-#endif
-#endif // !NULLPTR
+#endif //TI
 
 #define LYNX_INTERNAL_DATAGRAM char(255)
 
@@ -22,9 +25,11 @@ typedef int16_t int8_t;
 #define LYNX_INDEXER_BYTES 2
 #define LYNX_CHECKSUM_BYTES 1
 
-namespace LynxStructureSpace
+namespace LynxLib
 {
-	//----------------------------------------------- Enums ------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
+	//----------------------------------------------------- Enums ---------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
 
 	enum LynxDataType
 	{
@@ -71,7 +76,10 @@ namespace LynxStructureSpace
 		eSendModeEndOfList
 	};
 
-	//----------------------------------------------- Structures ------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
+	//--------------------------------------------------- Structures ------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
+	
 	//struct Union_8_32
 	//{
 
@@ -190,7 +198,223 @@ namespace LynxStructureSpace
 		bool newDevice;
 	};
 
-	//----------------------------------------------- LynxList ------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
+	//-------------------------------------------------- LynxRingBuffer ---------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
+
+	template <class T>
+	class LynxRingBuffer
+	{
+	private:
+		void writeElement(T element)
+		{
+			_buffer[_writeIndex] = element;
+
+			_writeIndex++;
+
+			if (_writeIndex >= _reservedSize)
+				_writeIndex = 0;
+		}
+
+	public:
+		enum E_RingBufferMode
+		{
+			eAllowOverflow = 0,
+			ePreventOverflow,
+			eRingBufferMode_EndOfList
+		};
+
+		LynxRingBuffer(E_RingBufferMode overflowMode = ePreventOverflow)
+		{
+			if (overflowMode < eRingBufferMode_EndOfList)
+				_overflowMode = overflowMode;
+			else
+				_overflowMode = ePreventOverflow;
+
+			_buffer = NULL;
+			_reservedSize = 0;
+			_writeIndex = 0;
+			_readIndex = 0;
+			_count = 0;
+		}
+
+		LynxRingBuffer(int size, E_RingBufferMode overflowMode = ePreventOverflow)
+		{
+			if (overflowMode < eRingBufferMode_EndOfList)
+				_overflowMode = overflowMode;
+			else
+				_overflowMode = ePreventOverflow;
+
+			_buffer = NULL;
+
+			this->init(size);
+		}
+
+		~LynxRingBuffer()
+		{
+			if (_buffer)
+			{
+				delete[] _buffer;
+				_buffer = NULL;
+			}
+		}
+
+		// Initializer, reserves space for data. If init has been run before, previous data will be deleted. 
+		// Returns number of elements reserved (should be the same as "size"), or -1 if error.
+		int init(int size)
+		{
+			if (_buffer)
+			{
+				delete[] _buffer;
+				_buffer = NULL;
+			}
+
+			_buffer = new T[size];
+
+			if (_buffer)
+			{
+				_count = 0;
+				_writeIndex = 0;
+				_readIndex = 0;
+				_reservedSize = size;
+
+				return _reservedSize;
+			}
+
+			return -1;
+		}
+
+		bool setOverflowMode(E_RingBufferMode overflowMode)
+		{
+			if (overflowMode >= eRingBufferMode_EndOfList)
+				return false;
+
+			_overflowMode = overflowMode;
+			return true;
+		}
+
+		E_RingBufferMode getOverflowMode()
+		{
+			return _overflowMode;
+		}
+
+		// Returns number of elements currently stored in buffer.
+		int count()
+		{
+			return _count;
+		}
+
+		// Returns free space in buffer.
+		int freeCount()
+		{
+			return (_reservedSize - _count);
+		}
+
+		int reservedSize()
+		{
+			return _reservedSize;
+		}
+
+		// Returns one element from the buffer. If there is nothing in the buffer, 0 is returned.
+		T read()
+		{
+			if (_count <= 0)
+				return T();
+
+			T temp = _buffer[_readIndex];
+
+			_count--;
+			_readIndex++;
+			if (_readIndex >= _reservedSize)
+				_readIndex = 0;
+
+			return temp;
+		}
+
+		// Reads "count" elements from the buffer and places it in "target".
+		// If "count" is greater then number of elements in buffer, available elements will be read.
+		// Returns number of elements read. 
+		int read(T* target, int count)
+		{
+			int size;
+			if (count > _count)
+				size = _count;
+			else
+				size = count;
+
+			for (int i = 0; i < size; i++)
+			{
+				target[i] = this->read();
+			}
+
+			return size;
+		}
+
+		// Writes one element "source" to the buffer
+		// Overflow allowed:
+		//		Returns true if the buffer is overflowing (data will be overwritten), otherwise false
+		// Overflow prevented:
+		//		Returns true if the buffer is full (data will not be written), otherwise false
+		bool write(T source)
+		{
+			if (_count < _reservedSize)
+			{
+				writeElement(source);
+				_count++;
+				return false;
+			}
+			
+			switch (_overflowMode)
+			{
+			case eAllowOverflow:
+				writeElement(source);
+				break;
+			case ePreventOverflow:
+				break;			
+			}
+			
+			return true;
+
+		}
+
+		// Writes "count" elements from "source" to the buffer.
+		// Overflow allowed:
+		//		Returns -1 * elements written if the buffer is overflowing (data will be overwritten), otherwise it returns elements written.
+		// Overflow prevented:
+		//		Returns -1 * elements written if the buffer is full (data above max index will not be written), otherwise it returns elements written
+		int write(T* source, int count)
+		{
+			bool overflow;
+
+			for (int i = 0; i < count; i++)
+			{
+				overflow = this->write(source[i]);
+
+				if (overflow && (_overflowMode == ePreventOverflow))
+					break;
+			}
+
+			if (overflow)
+				return (~count + 1);
+
+			return count;
+		}
+
+	private:
+		T* _buffer;
+
+		int _count;
+		int _reservedSize;
+
+		int _writeIndex;
+		int _readIndex;
+
+		E_RingBufferMode _overflowMode;
+	};
+
+	//---------------------------------------------------------------------------------------------------------------------------
+	//---------------------------------------------------- LynxList -------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
 
 	template <class T>
 	class LynxList
@@ -198,7 +422,7 @@ namespace LynxStructureSpace
 	public:
 		LynxList()
 		{
-			_list = LYNX_NULL;
+			_list = NULL;
 			_size = 0;
 			_reservedSize = 0;
         }
@@ -210,16 +434,16 @@ namespace LynxStructureSpace
 
 		LynxList(const LynxList<T>& list)
 		{
-			_list = LYNX_NULL;
+			_list = NULL;
 			*this = list;
         }
 
 		~LynxList()
 		{
-			if (_list != LYNX_NULL)
+			if (_list != NULL)
 			{
 				delete[] _list;
-				_list = LYNX_NULL;
+				_list = NULL;
 			}
         }
 
@@ -237,10 +461,10 @@ namespace LynxStructureSpace
 
 		void reserve(int size)
 		{
-			if (_list != LYNX_NULL)
+			if (_list != NULL)
 			{
 				delete[] _list;
-				_list = LYNX_NULL;
+				_list = NULL;
 			}
 
 			_size = 0;
@@ -250,19 +474,6 @@ namespace LynxStructureSpace
 
 		int appendItem(const T& item) // Adds a new item at the end of the list and populates it with "item". Returns index of appended item if successful, -1 if unsuccessful
 		{
-			int index = this->appendItem();
-
-			if (index < 0)
-			{
-				return index;
-			}
-
-			_list[index] = item;
-			return (index);
-        }
-
-		int appendItem() // Adds a new empty instance at the end of the list. Returns index of appended item if successful, -1 if unsuccessful
-		{
 			_size++;
 
 			if (_size > _reservedSize)
@@ -271,7 +482,7 @@ namespace LynxStructureSpace
 
 				T* tempList = new T[_reservedSize];
 
-				if (_list != LYNX_NULL)
+				if (_list != NULL)
 				{
 					for (int i = 0; i < _reservedSize - 1; i++)
 					{
@@ -282,24 +493,30 @@ namespace LynxStructureSpace
 				}
 
 				_list = tempList;
-				tempList = LYNX_NULL;
+				tempList = NULL;
 			}
 
-			_list[_size - 1] = T();
+			_list[_size - 1] = item;
 
 			return (_size - 1);
+		
+        }
+		
+		// Adds a new empty instance at the end of the list. Returns index of appended item if successful, -1 if unsuccessful
+		int appendItem()
+		{
+			return this->appendItem(T());
         }
 
-		int removeItem(int index)	// Removes the indexed item and shifts the remaining items to fill.
-									// Returns number of remaining items if successful, -1 if failed
-									// If there are no remaining items, the allocated memory is freed.
+		// Removes the indexed item and shifts the remaining items to fill
+		// Returns number of remaining items if successful, -1 if failed
+		int removeItem(int index)
 		{
 			if (index < this->_size)
 			{
 				_size--;
 				if (_size <= 0)
 				{
-					this->deleteList();
 					return this->_size;
 				}
 
@@ -313,16 +530,22 @@ namespace LynxStructureSpace
 			return -1;
         }
 
+		// Clears the list and frees the allocated memory
 		void deleteList()
 		{
 			_size = 0;
 			_reservedSize = 0;
-			if (_list != LYNX_NULL)
+			if (_list != NULL)
 			{
 				delete[] _list;
-				_list = LYNX_NULL;
+				_list = NULL;
 			}
         }
+
+		void clear()
+		{
+			_size = 0;
+		}
 
 		T& at(int index)
 		{
@@ -338,8 +561,10 @@ namespace LynxStructureSpace
 		int _size;
 		int _reservedSize;
 	};
-
-	//----------------------------------------------- LynxStructure ------------------------------------------------------------
+	
+	//---------------------------------------------------------------------------------------------------------------------------
+	//------------------------------------------------ LynxStructure ------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
 
 	class LynxStructure
 	{
@@ -349,20 +574,18 @@ namespace LynxStructureSpace
 
 		LynxStructure()
 		{
-			indexingSize = 0;
-			// size = 0;
-			data = LYNX_NULL;
-			_structDefinition = LYNX_NULL;
-			// _structName = LYNX_NULL;
+			_indexingSize = 0;
+			_data = NULL;
+			_structDefinition = NULL;
 			_dataChanged = false;
         }
 
 		~LynxStructure()
 		{
-			if (data != LYNX_NULL)
+			if (_data != NULL)
 			{
-				delete[] data;
-				data = LYNX_NULL;
+				delete[] _data;
+				_data = NULL;
 			}
         }
 
@@ -378,9 +601,9 @@ namespace LynxStructureSpace
 
         int getSize() { return this->_structDefinition->size; } // Returns number of elements in struct
 
-		int getIndexingSize() { return this->indexingSize; } // Returns number of bytes per index 
+		int getIndexingSize() { return this->_indexingSize; } // Returns number of bytes per index 
 
-		void* getDataPointer() { return data; };
+		void* getDataPointer() { return _data; };
 
 		// Returns the total size of the datapackage in bytes
 		int getTransferSize();
@@ -411,7 +634,7 @@ namespace LynxStructureSpace
 			}
 
             T* pDest = (T*)(target);
-            T* pSrc = (T*)(this->data);
+            T* pSrc = (T*)(this->_data);
 
 			for (int i = 0; i < size; i++)
 			{
@@ -426,7 +649,7 @@ namespace LynxStructureSpace
 		template <class T>
 		int copyDataFromTarget(const void* target, int size = 0)
 		{
-			if (!(_structDefinition->structMode == eArrayMode))
+			if (!(this->_structDefinition->structMode == eArrayMode))
 			{
 				return -2;
 			}
@@ -436,7 +659,7 @@ namespace LynxStructureSpace
 			}
 			else
 			{
-				if (size > _structDefinition->size)
+				if (size > this->_structDefinition->size)
 				{
 					return -1;
 				}
@@ -447,7 +670,7 @@ namespace LynxStructureSpace
 			}
 
 			T* pSrc = (T*)(target);
-			T* pDest = (T*)(this->data);
+			T* pDest = (T*)(this->_data);
 
 			for (int i = 0; i < size; i++)
 			{
@@ -470,7 +693,7 @@ namespace LynxStructureSpace
 
 			this->_dataChanged = false;
 			
-            return *((T*)(data + offset));
+            return *((T*)(_data + offset));
 
 		}
 
@@ -483,7 +706,7 @@ namespace LynxStructureSpace
 				return;
 			}
 
-			T* temp = (T*)(data + offset);
+			T* temp = (T*)(_data + offset);
 
 			*temp = dataIn;
 
@@ -516,27 +739,25 @@ namespace LynxStructureSpace
 		static int checkTransferSize(LynxDataType dataType);
 
 	private:
-		// const char* _structName;
-		
 		int getOffset(int identifier);
-
-		int indexingSize;
-		// int size;
-
-		char *data;
-
-		bool _dataChanged;
-
-		const StructDefinition* _structDefinition;
 
 		int writeVarToBuffer(char* dataBuffer, int bufferIndex, int lynxIndex);
 
 		int writeVarFromBuffer(const char* dataBuffer, int bufferIndex, int lynxIndex);
 
+		int _indexingSize;
+
+		char* _data;
+
+		bool _dataChanged;
+
+		const StructDefinition* _structDefinition;
 
 	};
 
-	//----------------------------------------------- LynxHandler ------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
+	//-------------------------------------------------- LynxHandler ------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
 
 	class LynxHandler
 	{
@@ -564,7 +785,7 @@ namespace LynxStructureSpace
 			}
 			_size = 0;
 			_reservedSize = 0;
-			_structures = LYNX_NULL;
+			_structures = NULL;
 			// _newScanResponses = 0;
 			_newScanRequest = false;
 			this->init(nStructs);
@@ -575,7 +796,7 @@ namespace LynxStructureSpace
 			if (_structures)
 			{
 				delete[] _structures;
-				_structures = LYNX_NULL;
+				_structures = NULL;
 			}
         }
 
@@ -672,6 +893,12 @@ namespace LynxStructureSpace
 
 		int getTranferSize(LynxID _lynxID);
 
+		LynxList<LynxID> getIDs();
+
+		void getIDs(LynxList<LynxID>& list);
+
+		// static int getTransferSize(StandardStructIDs internalDatagram);
+
         int size() { return _size; }
 
 		int newScanResponses(); // returns number of remaining scan responses
@@ -681,6 +908,9 @@ namespace LynxStructureSpace
         bool newScanRequest() { return _newScanRequest; }
 
 		int sendScanResponse(char* dataBuffer);
+
+        // Returns true if "_lynxID" exists in the hendler, false if not
+        bool isMember(LynxID _lynxID);
 
 	private:
 		LynxDeviceInfo _deviceInfo;
@@ -700,7 +930,7 @@ namespace LynxStructureSpace
 		int _size;
 		int _reservedSize;
 
-		int indexFromID(LynxID _lynxID);
+		int indexFromID(LynxID& _lynxID);
 
 		int handleInternalDatagram(const char* dataBuffer, LynxIpAddress ipAddress);
 

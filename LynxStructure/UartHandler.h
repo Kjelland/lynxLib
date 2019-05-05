@@ -1,12 +1,14 @@
 //-------------------------------------------------------------------------------------------
-//------------------------------------- Version 0.1.0.3 -------------------------------------
+//------------------------------------- Version 1.0.0.1 -------------------------------------
 //-------------------------------------------------------------------------------------------
 
 #pragma once
-// #define QT_LYNX
+#define QT_LYNX
 
 #ifdef ARDUINO
+#undef QT_LYNX
 #include <arduino.h>
+#define ARDUINO_MEGA
 #endif //ARDUINO
 
 #ifdef QT_LYNX
@@ -18,16 +20,16 @@
 // TODO MAGNUS
 // Write here if you need includes
 #include "DSP28x_Project.h"
-#include   "f2802x_common/include/sci.h"
-#include   "f2802x_common/include/clk.h"
+#include   "f2802x_common/include/sci_CPP.h"
+#include   "f2802x_common/include/clk_CPP.h"
 #endif // TI
 
 
 #include "LynxStructure.h"
-#include "RingBuffer.h"
+// #include "RingBuffer.h"
 
 #define DATABUFFER_SIZE 64
-#define REMOTE_ID 1
+#define REMOTE_ID 2
 
 // #define LYNX_DEBUG
 
@@ -44,13 +46,19 @@ public:
     UartHandler();
 
     // Opens the serial connection. Returns true if it was opened successfully.
-    bool open(int port, uint32_t baudRate);
+    bool open(int port, int baudRate);
+
+    // Closes the serial connection
+    void close();
+
+    // Returns connection state of port
+    bool opened();
 
     // Links between received data and lynx. Run this as often as possible
-    void update(LynxStructureSpace::LynxHandler& lynxHandler, const LynxStructureSpace::LynxID& lynxID);
+    void update(LynxLib::LynxHandler& lynxHandler);
 
     // Sends content of the lynx id to the serial port
-    int send(LynxStructureSpace::LynxHandler& lynxHandler, const LynxStructureSpace::LynxID& lynxID);
+    int send(LynxLib::LynxHandler& lynxHandler, const LynxLib::LynxID& lynxID);
 
     // Returns true if new data has been received and added to lynx
     bool newData();
@@ -61,6 +69,11 @@ public:
     // Returns number of communication errors since strtup
     int errorCount() { return _errorCounter; }
 
+    // Enables device pairing
+//    void enableDevicePairing() { _devicePairing = true; }
+
+    //Disables device pairing
+//    void disableDevicePairing() { _devicePairing = false; }
 
 private:
     // Reads a single character from serial and returns it
@@ -81,23 +94,28 @@ private:
     int _port;
     int _bytesIn = 0;
     char _dataBuffer[DATABUFFER_SIZE];
-    int _index = 0;
+    // int _index = 0;
+    bool _open = false;
+    LynxLib::LynxID _tempID;
+    // bool _devicePairing = false;
+    bool _shuffleBytes = false;
 
+	LynxLib::LynxList<LynxLib::LynxID> _idList;
 #ifdef QT_LYNX
+public:
+    bool open(QSerialPortInfo port, int baudRate);
 private:
     QSerialPort serialPort;
 #endif //QT_LYNX
 
 #ifdef TI
 public:
-    void Init(SCI_Handle _sciHandle,CLK_Handle _clkHandle);
     RingBuffer <char>txBuffer;
     RingBuffer <char>rxBuffer;
+    UartHandler(SCI_Handle _sciHandle,CLK_Handle _clkHandle);
 private:
     SCI_Handle sciHandle;
     CLK_Handle clkHandle;
     // int writeBytes(const char* buffer, int size,SCI_Handle sciHandle);
 #endif //TI
-
 };
-

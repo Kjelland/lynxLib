@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------
-//------------------------------------- Version 0.1.0.3 -------------------------------------
+//------------------------------------- Version 1.0.0.1 -------------------------------------
 //-------------------------------------------------------------------------------------------
 
 #include "UartHandler.h"
@@ -9,15 +9,19 @@ UartHandler::UartHandler()
 {
     for (int i = 0; i < DATABUFFER_SIZE; i++)
     {
-        dataBuffer[i] = 0;
+        _dataBuffer[i] = 0;
     }
 }
 
 bool UartHandler::open(int port, int baudRate)
 {
-    serPort = port;
+	if (_open)
+		return false;
 
-    switch (this->serPort)
+    _port = port;
+	_open = true;
+
+    switch (this->_port)
     {
     case 0:
     {
@@ -29,6 +33,7 @@ bool UartHandler::open(int port, int baudRate)
         Serial1.begin(baudRate);
         break;
     }
+#ifdef ARDUINO_MEGA
     case 2:
     {
         Serial2.begin(baudRate);
@@ -39,6 +44,7 @@ bool UartHandler::open(int port, int baudRate)
         Serial3.begin(baudRate);
         break;
     }
+#endif // ARDUINO_MEGA
     default:
         return false;
     }
@@ -46,9 +52,46 @@ bool UartHandler::open(int port, int baudRate)
     return true;
 }
 
-char UartHandler::readByte()
+void UartHandler::close()
 {
-    switch (this->serPort)
+	if (!_open)
+		return;
+
+	switch (this->_port)
+	{
+	case 0:
+	{
+		Serial.end();
+		break;
+	}
+	case 1:
+	{
+		Serial1.end();
+		break;
+	}
+#ifdef ARDUINO_MEGA
+	case 2:
+	{
+		Serial2.end();
+		break;
+	}
+	case 3:
+	{
+		Serial3.end();
+		break;
+	}
+#endif // ARDUINO_MEGA
+	}
+
+	_open = false;
+}
+
+char UartHandler::read()
+{
+	if (!_open)
+		return 0;
+
+    switch (this->_port)
     {
     case 0:
     {
@@ -58,6 +101,7 @@ char UartHandler::readByte()
     {
         return Serial1.read();
     }
+#ifdef ARDUINO_MEGA
     case 2:
     {
         return Serial2.read();
@@ -66,16 +110,20 @@ char UartHandler::readByte()
     {
         return Serial3.read();
     }
-    default:
+#endif // ARDUINO_MEGA
+	default:
         break;
     }
 
     return 0;
 }
 
-int UartHandler::readBytes(char* buffer, int size)
+int UartHandler::read(char* buffer, int size)
 {
-    switch (this->serPort)
+	if (!_open)
+		return -1;
+
+    switch (this->_port)
     {
     case 0:
     {
@@ -85,6 +133,7 @@ int UartHandler::readBytes(char* buffer, int size)
     {
         return Serial1.readBytes(buffer, size);
     }
+#ifdef ARDUNO_MEGA
     case 2:
     {
         return Serial2.readBytes(buffer, size);
@@ -93,6 +142,7 @@ int UartHandler::readBytes(char* buffer, int size)
     {
         return Serial3.readBytes(buffer, size);
     }
+#endif // ARDUNO_MEGA
     default:
         break;
     }
@@ -100,26 +150,31 @@ int UartHandler::readBytes(char* buffer, int size)
     return -1;
 }
 
-int UartHandler::writeBytes(const char* buffer, int size)
+int UartHandler::write(const char* buffer, int size)
 {
-    switch (this->serPort)
+	if (!_open)
+		return -1;
+
+    switch (this->_port)
     {
     case 0:
     {
-        return Serial.write(buffer, size);
+        return Serial.write(reinterpret_cast<const uint8_t*>(buffer), size);
     }
     case 1:
     {
-        return Serial1.write(buffer, size);
+        return Serial1.write(reinterpret_cast<const uint8_t*>(buffer), size);
     }
+#ifdef ARDUINO_MEGA
     case 2:
     {
-        return Serial2.write(buffer, size);
+        return Serial2.write(reinterpret_cast<const uint8_t*>(buffer), size);
     }
     case 3:
     {
-        return Serial3.write(buffer, size);
+        return Serial3.write(reinterpret_cast<const uint8_t*>(buffer), size);
     }
+#endif // ARDUINO_MEGA
     default:
         break;
     }
@@ -129,7 +184,7 @@ int UartHandler::writeBytes(const char* buffer, int size)
 
 int UartHandler::bytesAvailable()
 {
-    switch (this->serPort)
+    switch (this->_port)
     {
     case 0:
     {
@@ -139,6 +194,7 @@ int UartHandler::bytesAvailable()
     {
         return Serial1.available();
     }
+#ifdef ARDUINO_MEGA
     case 2:
     {
         return Serial2.available();
@@ -147,7 +203,8 @@ int UartHandler::bytesAvailable()
     {
         return Serial3.available();
     }
-    default:
+#endif // ARDUINO_MEGA
+	default:
         break;
     }
 
@@ -168,6 +225,9 @@ UartHandler::UartHandler()
 
 bool UartHandler::open(int port, int baudRate)
 {
+    if(_open)
+        return false;
+
     _port = port;
 
     QString temp = QString::asprintf("COM%d", _port);
@@ -179,7 +239,34 @@ bool UartHandler::open(int port, int baudRate)
     if(!serialPort.open(QIODevice::ReadWrite))
         return false;
 
+    _open = true;
+
     return true;
+}
+
+bool UartHandler::open(QSerialPortInfo port, int baudRate)
+{
+    if(_open)
+        return false;
+
+    serialPort.setPort(port);
+
+    if(!serialPort.setBaudRate(baudRate))
+        return false;
+    if(!serialPort.open(QIODevice::ReadWrite))
+        return false;
+
+    _open = true;
+
+    return true;
+}
+
+void UartHandler::close()
+{
+    if(_open)
+        serialPort.close();
+
+    _open = false;
 }
 
 char UartHandler::read()
@@ -207,80 +294,57 @@ int UartHandler::bytesAvailable()
 
 #ifdef TI
 
-UartHandler::UartHandler()
-{
-    // TODO MAGNUS
-    // Write here if you need something in the constructor
-
-    // Clear buffer
-    for(int i = 0; i < DATABUFFER_SIZE; i++)
-    {
-        _dataBuffer[i] = 0;
-    }
-
-}
-void UartHandler::Init(SCI_Handle _sciHandle,CLK_Handle _clkHandle)
+UartHandler::UartHandler(SCI_Handle _sciHandle,CLK_Handle _clkHandle)
 {
     // TODO MAGNUS
     // Write here if you need something in the constructor
     this->sciHandle = _sciHandle;
     this->clkHandle=_clkHandle;
     // Clear buffer
-
-    rxBuffer.init(DATABUFFER_SIZE);
-    txBuffer.init(DATABUFFER_SIZE);
+    for(int i = 0; i < DATABUFFER_SIZE; i++)
+    {
+        dataBuffer[i] = 0;
+    }
+    rxBuffer.init(100);
+    txBuffer.init(100);
 }
 
-bool UartHandler::open(int port, uint32_t baudRate)
+bool UartHandler::open(int port, int baudRate)
 {
-    //_serPort = port;
+    serPort = port;
 
     // TODO MAGNUS
     // Open serial port "serPort" with baud-rate "baudRate" inclde switch case for baud
     // Return true if success, false if failure
     // enable the SCI-A clock
+        CLK_enableSciaClock(clkHandle);
 
-    CLK_enableSciaClock(clkHandle);
-
-        // 1 stop bit,  No loopback
-        // No parity,8 char bits,
-        // async mode, idle-line protocol
+        // disable parity
         SCI_disableParity(sciHandle);
+
+        // 1 stop bit
         SCI_setNumStopBits(sciHandle, SCI_NumStopBits_One);
+
+        // 8 data bits
         SCI_setCharLength(sciHandle, SCI_CharLength_8_Bits);
 
-        // enable TX, RX, internal SCICLK,
-        // Disable RX ERR, SLEEP, TXWAKE
+        // 9600 baud rate
+        SCI_setBaudRate(sciHandle, SCI_BaudRate_9_6_kBaud);
+
+        // enable free run - continue SCI operation regardless of emulation suspend
+        SCI_setPriority(sciHandle, SCI_Priority_FreeRun);
+
+        // enable TX and RX
         SCI_enableTx(sciHandle);
         SCI_enableRx(sciHandle);
+
         SCI_enableTxInt(sciHandle);
         SCI_enableRxInt(sciHandle);
 
-        //SCI_enableLoopBack(sciHandle);
-
-        // LSPCLK_FREQ CPU_FREQ/4
-        // SCI BRR = LSPCLK/(SCI BAUDx8) - 1
-        switch (baudRate) {
-                   case 9600:
-                       SCI_setBaudRate(sciHandle, SCI_BaudRate_9_6_kBaud);
-                       break;
-                   case 19200:
-                       SCI_setBaudRate(sciHandle, SCI_BaudRate_19_2_kBaud);
-                       break;
-                   case 57600:
-                       SCI_setBaudRate(sciHandle, SCI_BaudRate_57_6_kBaud);
-                       break;
-                   case 115200:
-                       SCI_setBaudRate(sciHandle, SCI_BaudRate_115_2_kBaud);
-                       break;
-                   default:
-                       return false;
-               }
-
-
+        // enable the SCI interface
         SCI_enable(sciHandle);
 
-
+        // init FIFO
         SCI_enableFifoEnh(sciHandle);
         SCI_resetTxFifo(sciHandle);
         SCI_clearTxFifoInt(sciHandle);
@@ -288,22 +352,24 @@ bool UartHandler::open(int port, uint32_t baudRate)
         SCI_setTxFifoIntLevel(sciHandle, SCI_FifoLevel_2_Words);
         SCI_enableTxFifoInt(sciHandle);
 
+
         SCI_resetRxFifo(sciHandle);
         SCI_clearRxFifoInt(sciHandle);
-        SCI_setRxFifoIntLevel(sciHandle, SCI_FifoLevel_2_Words);
+        SCI_setRxFifoIntLevel(sciHandle, SCI_FifoLevel_4_Words);
         SCI_enableRxFifoInt(sciHandle);
-    return true;
+
+        return true;//success
 
 }
 
-char UartHandler::read(void)
+char UartHandler::readByte()
 {
     // TODO MAGNUS
     // Read a single byte from the serial port and return it
     return rxBuffer.read();
 }
 
-int UartHandler::read(char* buffer, int size)
+int UartHandler::readBytes(char* buffer, int size)
 {
     // TODO MAGNUS
     // Read "size" number of bytes from the serial port and put them in "buffer".
@@ -311,7 +377,7 @@ int UartHandler::read(char* buffer, int size)
     return rxBuffer.read(buffer,size);
 }
 
-int UartHandler::write(const char* buffer, int size)
+int UartHandler::writeBytes(const char* buffer, int size)
 {
     // TODO MAGNUS
     // Write "size" number of bytes from "buffer" to the serial port.
@@ -333,117 +399,214 @@ int UartHandler::bytesAvailable()
 
 #endif //TI
 
-void UartHandler::update(LynxStructureSpace::LynxHandler& lynxHandler, const LynxStructureSpace::LynxID& _lynxID)
+//void UartHandler::update(LynxStructureSpace::LynxHandler& lynxHandler, const LynxStructureSpace::LynxID& _lynxID)
+//{
+//    if(!_open)
+//        return;
+//
+//    _bytesIn = bytesAvailable();
+//
+//    if(_bytesIn < 0)
+//    {
+//        _errorCounter++;
+//        return;
+//    }
+//
+//    switch (_state)
+//    {
+//    case eIdle:
+//    {
+//        if (_bytesIn > 0)
+//        {
+//            _index = 0;
+//            _state = eScanning;
+//        }
+//
+//        break;
+//    }
+//    case eScanning:
+//    {
+//        if (_bytesIn)
+//        {
+//            switch (_index)
+//            {
+//            case 0:
+//            {
+//                _dataBuffer[_index] = this->read();
+//
+//                if (_dataBuffer[_index] == REMOTE_ID)
+//                    _index++;
+//                else
+//                {
+//                    _state = eIdle;
+//                    _errorCounter++;
+//                }
+//                break;
+//            }
+//            case 1:
+//            {
+//                _dataBuffer[_index] = this->read();
+//
+//                if (_dataBuffer[_index] == _lynxID.structTypeID)
+//                    _index++;
+//                else
+//                {
+//                    _state = eIdle;
+//                    _errorCounter++;
+//                }
+//                break;
+//            }
+//            case 2:
+//            {
+//                _dataBuffer[_index] = this->read();
+//
+//                if (true)//dataBuffer[index] == _lynxID.structInstanceID)
+//                {
+//                    _index++;
+//                    _state = eReading;
+//                }
+//                else
+//                {
+//                    _state = eIdle;
+//                    _errorCounter++;
+//                }
+//                break;
+//            }
+//            default:
+//            {
+//                _state = eIdle;
+//                _errorCounter++;
+//
+//                break;
+//            }
+//            }
+//        }
+//
+//        break;
+//    }
+//    case eReading:
+//    {
+//        if (_bytesIn >= (lynxHandler.getTranferSize(_lynxID) - _index))
+//        {
+//            this->read(&(_dataBuffer[_index]), (lynxHandler.getTranferSize(_lynxID) - _index));
+//            int bytesReceived = lynxHandler.fromBuffer(_dataBuffer);
+//
+//            if(bytesReceived < 0)
+//                _errorCounter++;
+//
+//            _state = eIdle;
+//            _newData = true;
+//        }
+//
+//        break;
+//    }
+//    default:
+//    {
+//        _state = eIdle;
+//        _errorCounter++;
+//        break;
+//    }
+//    }
+//}
+
+bool UartHandler::opened()
 {
-    _bytesIn = bytesAvailable();
-
-    if(_bytesIn < 0)
-    {
-        _errorCounter++;
-        return;
-    }
-
-    switch (_state)
-    {
-    case eIdle:
-    {
-        if (_bytesIn > 0)
-        {
-            _index = 0;
-            _state = eScanning;
-        }
-
-        break;
-    }
-    case eScanning:
-    {
-        if (_bytesIn)
-        {
-            switch (_index)
-            {
-            case 0:
-            {
-                _dataBuffer[_index] = this->read();
-
-                if (_dataBuffer[_index] == REMOTE_ID)
-                    _index++;
-                else
-                {
-                    _state = eIdle;
-                    _errorCounter++;
-                }
-                break;
-            }
-            case 1:
-            {
-                _dataBuffer[_index] = this->read();
-
-                if (_dataBuffer[_index] == _lynxID.structTypeID)
-                    _index++;
-                else
-                {
-                    _state = eIdle;
-                    _errorCounter++;
-                }
-                break;
-            }
-            case 2:
-            {
-                _dataBuffer[_index] = this->read();
-
-                if (true)//dataBuffer[index] == _lynxID.structInstanceID)
-                {
-                    _index++;
-                    _state = eReading;
-                }
-                else
-                {
-                    _state = eIdle;
-                    _errorCounter++;
-                }
-                break;
-            }
-            default:
-            {
-                _state = eIdle;
-                _errorCounter++;
-
-                break;
-            }
-            }
-        }
-
-        break;
-    }
-    case eReading:
-    {
-        if (_bytesIn >= (lynxHandler.getTranferSize(_lynxID) - _index))
-        {
-            this->read(&(_dataBuffer[_index]), (lynxHandler.getTranferSize(_lynxID) - _index));
-            int bytesReceived = lynxHandler.fromBuffer(_dataBuffer);
-
-            if(bytesReceived < 0)
-                _errorCounter++;
-
-            _state = eIdle;
-            _newData = true;
-        }
-
-        break;
-    }
-    default:
-    {
-        _state = eIdle;
-        _errorCounter++;
-        break;
-    }
-    }
+	return _open;
 }
 
-
-
-int UartHandler::send(LynxStructureSpace::LynxHandler & lynxHandler, const LynxStructureSpace::LynxID & _lynxID)
+void UartHandler::update(LynxLib::LynxHandler& lynxHandler)
 {
+	if (!_open)
+		return;
+
+	_bytesIn = bytesAvailable();
+
+	if (_bytesIn < 0)
+	{
+		_errorCounter++;
+		return;
+	}
+
+	switch (_state)
+	{
+	case eIdle:
+	{
+		if (_bytesIn > 0)
+		{
+            // _index = 0;
+			_state = eScanning;
+		}
+
+		break;
+	}
+	case eScanning:
+	{
+        if (_bytesIn > 0)
+        {
+            if(_shuffleBytes)
+            {
+                _dataBuffer[0] = _dataBuffer[1];
+                _dataBuffer[1] = _dataBuffer[2];
+                _dataBuffer[2] = this->read();
+                _shuffleBytes = false;
+            }
+            else
+            {
+                if(_bytesIn < 3)
+                    break;
+
+                this->read(_dataBuffer, 3);
+            }
+
+            _tempID.deviceID = static_cast<uint8_t>(_dataBuffer[0]);
+            _tempID.structTypeID = static_cast<uint8_t>(_dataBuffer[1]);
+            _tempID.structInstanceID = static_cast<uint8_t>(_dataBuffer[2]);
+
+            if(!lynxHandler.isMember(_tempID))
+            {
+                _shuffleBytes = true;
+                _errorCounter++;
+                _state = eIdle;
+                break;
+            }
+
+            _state = eReading;
+            break;
+		}
+
+		break;
+	}
+	case eReading:
+	{
+
+        if (_bytesIn >= (lynxHandler.getTranferSize(_tempID) - 3))
+		{
+            this->read(&(_dataBuffer[3]), (lynxHandler.getTranferSize(_tempID) - 3));
+			int bytesReceived = lynxHandler.fromBuffer(_dataBuffer);
+
+			if (bytesReceived < 0)
+				_errorCounter++;
+
+			_state = eIdle;
+			_newData = true;
+		}
+
+		break;
+	}
+	default:
+	{
+		_state = eIdle;
+		_errorCounter++;
+		break;
+	}
+	}
+}
+
+int UartHandler::send(LynxLib::LynxHandler & lynxHandler, const LynxLib::LynxID & _lynxID)
+{
+    if(!_open)
+        return -1;
+
     int size = lynxHandler.toBuffer(_lynxID, _dataBuffer);
 
     return this->write(_dataBuffer, size);

@@ -1,6 +1,6 @@
-//------------------------------------------------------------------------------------------------------------------------------
-//--------------------------------------------------- Version 1.2.0.3 ----------------------------------------------------------
-//------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------- Version 1.2.0.3 ----------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------
 
 #include"LynxStructure.h"
 
@@ -8,10 +8,11 @@
 // #include <exception>
 // #include <iostream>
 
-namespace LynxStructureSpace
+namespace LynxLib
 {
-
-	//----------------------------------------------- LynxStructure ------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
+	//------------------------------------------------ LynxStructure ------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
 
 	void LynxStructure::init(const StructDefinition* structDefinition, LynxID _lynxID)
 	{
@@ -19,36 +20,36 @@ namespace LynxStructureSpace
 
 		switch (structDefinition->structMode)
 		{
-		case LynxStructureSpace::eStructureMode:
+		case LynxLib::eStructureMode:
 			int tempSize;
 			for (int i = 0; i < structDefinition->size; i++)
 			{
 				tempSize = checkLocalSize(structDefinition->structItems[i].dataType);
 
-				if (tempSize > this->indexingSize)
+				if (tempSize > this->_indexingSize)
 				{
-					this->indexingSize = tempSize;
+					this->_indexingSize = tempSize;
 				}
 
 			}
 			break;
-		case LynxStructureSpace::eArrayMode:
+		case LynxLib::eArrayMode:
 			if (structDefinition->size <= 0)
 			{
 				return;
 			}
-			this->indexingSize = checkLocalSize(structDefinition->structItems[0].dataType);
+			this->_indexingSize = checkLocalSize(structDefinition->structItems[0].dataType);
 			break;
 		default:
 			return;
 		}
 
-		if (data)
+		if (_data)
 		{
-			delete[] data;
+			delete[] _data;
 		}
 
-		data = new char[structDefinition->size*this->indexingSize];
+		_data = new char[structDefinition->size*this->_indexingSize];
 		this->_structDefinition = structDefinition;
 		// _structName = structDefinition->structName;
 
@@ -136,7 +137,7 @@ namespace LynxStructureSpace
 
 		int index = LYNX_ID_BYTES + LYNX_INDEXER_BYTES;
 
-		int tempSize;
+        int tempSize = 0;
 
 
 		if (lynxIndex == 0) // Copy all data
@@ -203,27 +204,11 @@ namespace LynxStructureSpace
 
 	void LynxStructure::clear()
 	{
-		for (int i = 0; i < this->_structDefinition->size*this->indexingSize; i++)
+		for (int i = 0; i < this->_structDefinition->size*this->_indexingSize; i++)
 		{
-			data[i] = 0;
+			_data[i] = 0;
 		}
 	}
-
-
-	// Returns the size of the datapackage in bytes (not including identifiers and checksum)
-	//int LynxStructure::getTransferSize() 
-	//{
-	//	int tempSize = 0;
-
-	//	for (int i = 0; i < this->_structDefinition->size; i++)
-	//	{
-	//		if (_structDefinition->structItems[i].dataType == eEndOfList)
-	//			break;
-
-	//		tempSize += checkTransferSize(_structDefinition->structItems[i].dataType);
-	//	}
-	//	return 0;
-	//}
 
 	// Returns the size of the datapackage in bytes (not including identifiers and checksum)
 	int LynxStructure::getTransferSize()
@@ -342,10 +327,10 @@ namespace LynxStructureSpace
 
 		switch (this->_structDefinition->structMode)
 		{
-		case LynxStructureSpace::eStructureMode:
+		case LynxLib::eStructureMode:
 			tempTransferSize = checkTransferSize(this->_structDefinition->structItems[lynxIndex].dataType);
 			break;
-		case LynxStructureSpace::eArrayMode:
+		case LynxLib::eArrayMode:
 			tempTransferSize = checkTransferSize(this->_structDefinition->structItems[0].dataType);
 			break;
 		default:
@@ -404,10 +389,10 @@ namespace LynxStructureSpace
 
 		switch (this->_structDefinition->structMode)
 		{
-		case LynxStructureSpace::eStructureMode:
+		case LynxLib::eStructureMode:
 			tempTransferSize = checkTransferSize(this->_structDefinition->structItems[lynxIndex].dataType);
 			break;
-		case LynxStructureSpace::eArrayMode:
+		case LynxLib::eArrayMode:
 			tempTransferSize = checkTransferSize(this->_structDefinition->structItems[0].dataType);
 			break;
 		default:
@@ -470,11 +455,13 @@ namespace LynxStructureSpace
 			return -1;
 		}
 
-		return (target * this->indexingSize);
+		return (target * this->_indexingSize);
 
 	}
 
-	//----------------------------------------------- LynxHandler ------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
+	//-------------------------------------------------- LynxHandler ------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
 
 	void LynxHandler::init(int nStructs)
 	{
@@ -519,7 +506,7 @@ namespace LynxStructureSpace
 			}
 
 			_structures = tempStructs;
-			tempStructs = LYNX_NULL;
+			tempStructs = NULL;
 		}
 
 		LynxID tempID = LynxID( this->_deviceInfo.deviceID, _structType, _structInstance );
@@ -587,7 +574,7 @@ namespace LynxStructureSpace
 
 		int copySize = _structures[targetIndex].getSize()*_structures[targetIndex].getIndexingSize();
 
-		char* sourcePointer = (char*)(_structures[sourceIndex].getDataPointer());
+        char* sourcePointer = (char*)(_structures[sourceIndex].getDataPointer());
 		char* targetPointer = (char*)(_structures[targetIndex].getDataPointer());
 
 		for (int i = 0; i < copySize; i++)
@@ -642,6 +629,47 @@ namespace LynxStructureSpace
 		return this->_structures[index].getTransferSize();
 	}
 
+	LynxList<LynxID> LynxHandler::getIDs()
+	{
+		if (!this->_size)
+			return LynxList<LynxID>();
+
+		LynxList<LynxID> list(this->_size);
+
+		getIDs(list);
+
+		return list;
+	}
+
+	void LynxHandler::getIDs(LynxList<LynxID>& list)
+	{
+		list.clear();
+
+		for (int i = 0; i < this->_size; i++)
+		{
+			list.appendItem(this->_structures[i].lynxID);
+		}
+	}
+
+	/*
+	int LynxHandler::getTransferSize(StandardStructIDs internalDatagram)
+	{
+		switch (internalDatagram)
+		{
+		case LynxStructureSpace::eSsInvalidID:
+			return -1;
+		case LynxStructureSpace::eLynxRequest:
+			break;
+		case LynxStructureSpace::eLynxResponse:
+			break;
+		case LynxStructureSpace::eSsEndOfList:
+			break;	
+		}
+
+		return -1;
+	}
+	*/
+
 	int LynxHandler::newScanResponses()
 	{
 		int temp = 0;
@@ -672,15 +700,6 @@ namespace LynxStructureSpace
 		}
 
 		return temp;
-
-		//LynxDeviceInfo temp = LynxDeviceInfo();
-
-		//if (_availableDevices.getSize() > 0)
-		//{
-		//	temp = _availableDevices.at(0);
-		//	_availableDevices.removeItem(0);
-		//}
-		//return temp;
 	}
 
 	int LynxHandler::sendScanResponse(char* dataBuffer)
@@ -729,7 +748,15 @@ namespace LynxStructureSpace
 		return index;
 	}
 
-	int LynxHandler::indexFromID(LynxID _lynxID)
+    bool LynxHandler::isMember(LynxID _lynxID)
+    {
+        if(this->indexFromID(_lynxID) < 0)
+            return false;
+
+        return true;
+    }
+
+	int LynxHandler::indexFromID(LynxID& _lynxID)
 	{
 		for (int i = 0; i < this->_size; i++)
 		{
@@ -747,11 +774,11 @@ namespace LynxStructureSpace
 	{
 		switch (StandardStructIDs(dataBuffer[1]))
 		{
-		case LynxStructureSpace::eLynxRequest:
+		case LynxLib::eLynxRequest:
 			{
 				return this->handleRequest(dataBuffer, ipAddress);
 			}
-		case LynxStructureSpace::eLynxResponse:
+		case LynxLib::eLynxResponse:
 			{
 				return this->handleResponse(dataBuffer, ipAddress);
 			}
