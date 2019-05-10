@@ -173,6 +173,7 @@ void BackEnd::buttonSaveClicked()
     }
 
     QString fullPath = _filePath + "/" + _structName.text.toLower() + "struct" + ".h";
+
     QFile file(fullPath);
 
     if(file.exists())
@@ -180,8 +181,13 @@ void BackEnd::buttonSaveClicked()
 
     if(file.open(QIODevice::WriteOnly))
     {
+        QString STRUCT_NAME = _structName.text.toUpper();
+        QString StructName = _structName.text.left(1).toUpper() + _structName.text.right(_structName.text.size() - 1);
+        QString structName = _structName.text.left(1).toLower() + _structName.text.right(_structName.text.size() - 1);
+
+
         //-------------- define -----------------
-        QString temp = "#ifndef " + _structName.text.toUpper() + "_STRUCT" + "\r\n#define " + _structName.text.toUpper() + "_STRUCT" + " " + _structId.text + "\r\n\r\n";
+        QString temp = "#ifndef " + STRUCT_NAME + "_STRUCT" + "\r\n#define " + STRUCT_NAME + "_STRUCT" + " " + _structId.text + "\r\n\r\n";
         file.write(temp.toLatin1());
 
         //------------- include -----------------
@@ -193,7 +199,7 @@ void BackEnd::buttonSaveClicked()
         file.write(temp.toLatin1());
 
         //--------------- enum ------------------
-        temp = "enum E_" + _structName.text + "Contents\r\n{\r\n";
+        temp = "enum E_" + StructName + "Contents\r\n{\r\n";
         file.write(temp.toLatin1());
 
         for (int i = 0; i < _memberInfo.count(); i++)
@@ -202,11 +208,11 @@ void BackEnd::buttonSaveClicked()
             file.write(temp.toLatin1());
         }
 
-        temp = "\t" + _structName.text + "Contents_EndOfList\r\n};\r\n\r\n";
+        temp = "\t" + structName + "Contents_EndOfList\r\n};\r\n\r\n";
         file.write(temp.toLatin1());
 
         //----------- structItems --------------
-        temp = "static const StructItem " + _structName.text + "Items[]\r\n{\r\n";
+        temp = "static const StructItem " + structName + "Items[]\r\n{\r\n";
         file.write(temp.toLatin1());
 
         for (int i = 0; i < _memberInfo.count(); i++)
@@ -219,15 +225,15 @@ void BackEnd::buttonSaveClicked()
         file.write(temp.toLatin1());
 
         //---------- structDefinition -----------
-        temp = "static const StructDefinition " + _structName.text + "Definition\r\n";
+        temp = "static const StructDefinition " + structName + "Definition\r\n";
         file.write(temp.toLatin1());
 
-        temp = "\t\"" + _structName.text + " Struct\",\r\n\teStructureMode,\r\n\t" + _structName.text + "Items\r\n};\r\n\r\n";
+        temp = "\t\"" + StructName + " Struct\",\r\n\teStructureMode,\r\n\t" + structName + "Items\r\n};\r\n\r\n";
         file.write(temp.toLatin1());
 
 
         //--------------- end -------------------
-        temp = "#endif // " + _structName.text.toUpper() + "_STRUCT";
+        temp = "#endif // " + STRUCT_NAME + "_STRUCT";
         file.write(temp.toLatin1());
 
         file.close();
