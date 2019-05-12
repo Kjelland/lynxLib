@@ -7,7 +7,6 @@ Item {
 
     onColorChanged:
     {
-        // console.log(color)
         canvas.requestPaint()
     }
 
@@ -17,22 +16,12 @@ Item {
         width: parent.parent.width
         height: parent.parent.height
         property int thickness: (width + height)/20
-//        Connections{
-//            target: color
-//            onTargetChanged:
-//            {
-//                requestPaint()
-//            }
-//        }
-
-
 
         onPaint:
         {
             var ctx = getContext("2d")
-            ctx.fillStyle = color // Qt.rgba(1, 0, 0, 1);
+            ctx.fillStyle = color
             ctx.fillRect(0, 0, width, height)
-            // ctx.fillStyle = mainWindow.color
             ctx.fillRect(thickness, thickness, width - 2*thickness, height - 2*thickness)
             ctx.lineWidth = thickness
             ctx.strokeStyle = backgroundColor

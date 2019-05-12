@@ -6,6 +6,7 @@ Item
 {
     id: memberItem
 
+    property string themeColor: "grey"
     property int index: 0
     property int enumIndex: 0
     property string dragDropKey: "key1"
@@ -21,12 +22,6 @@ Item
 
     width: 400
     height: 50
-
-    Component.onCompleted:
-    {
-        // info.setIndex(index)
-        // compComplete(index)
-    }
 
     Column
     {
@@ -117,7 +112,8 @@ Item
                     id: indexRect
                     height: parent.height
                     width: height
-                    color: info.indexColor // "steelblue"
+                    color: info.indexColor
+                    radius: height > width ? width/5 : height/5
 
                     Text
                     {
@@ -132,12 +128,13 @@ Item
 
                 }
 
-                TextField
+                MyTextField
                 {
                     width: 200
                     height: parent.height
                     text: info.text
                     color: info.color
+                    borderColor: themeColor
                     placeholderText: qsTr("Element Name")
                     selectByMouse: true
                     onTextChanged:
@@ -150,19 +147,16 @@ Item
                         // showCross = false
                         acceptedEnter(typeId.currentIndex)
                     }
-                    onFocusChanged:
-                    {
-
-                    }
 
                     Component.onCompleted: focus = true
                 }
 
-                ComboBox
+                MyComboBox
                 {
                     id: typeId
                     width: 100
                     height: parent.height
+                    color: themeColor
                     model: enumList
                     onActivated: enumChanged(currentText, memberItem.index)
                     Component.onCompleted:
@@ -195,14 +189,6 @@ Item
                         else
                             crossSquare.color = "red"
                     }
-
-//                    onPressed: crossSquare.color = "crimson"
-
-//                    onFocusChanged:
-//                    {
-//                        if(focus !== this)
-//                            crossSquare.color = "red"
-//                    }
 
                     onPressedChanged:
                     {

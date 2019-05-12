@@ -3,5 +3,8 @@
         <file>main.qml</file>
         <file>ElementListItem.qml</file>
         <file>CrossSquare.qml</file>
+        <file>MyButton.qml</file>
+        <file>MyTextField.qml</file>
+        <file>MyComboBox.qml</file>
     </qresource>
 </RCC>
