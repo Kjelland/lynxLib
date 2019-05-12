@@ -21,10 +21,12 @@ void TextHandler::setText(QString input)
     if(_valid)
     {
         this->setColor("blue");
+        this->setIndexColor("steelblue");
     }
     else
     {
         this->setColor("red");
+        this->setIndexColor("tomato");
     }
 
     emit textChanged();
@@ -44,13 +46,13 @@ void TextHandler::setValidCondition(ValidCondition condition)
     _validCondition = condition;
 }
 
-void TextHandler::setIndex(int index)
+void TextHandler::setIndexColor(QString input)
 {
-    if(index == _index)
+    if(input == _indexColor)
         return;
 
-    _index = index;
-    emit indexChanged();
+    _indexColor = input;
+    emit indexColorChanged();
 }
 
 bool TextHandler::valid()
@@ -68,9 +70,9 @@ QString TextHandler::color()
     return _color;
 }
 
-int TextHandler::index()
+QString TextHandler::indexColor()
 {
-    return _index;
+    return _indexColor;
 }
 
 bool TextHandler::checkName()
@@ -325,4 +327,9 @@ void BackEnd::setMemberType(QString type, int index)
 void BackEnd::removeMember(int index)
 {
     _memberInfo.removeAt(index);
+}
+
+void BackEnd::moveMember(int fromIndex, int toIndex)
+{
+    _memberInfo.move(fromIndex, toIndex);
 }

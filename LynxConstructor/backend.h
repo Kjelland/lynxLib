@@ -31,14 +31,14 @@ private:
 
     Q_PROPERTY(QString text READ text WRITE setText NOTIFY textChanged)
     Q_PROPERTY(QString color READ color WRITE setColor NOTIFY colorChanged)
-    Q_PROPERTY(int index READ index WRITE setIndex NOTIFY indexChanged)
+    Q_PROPERTY(QString indexColor READ indexColor WRITE setIndexColor NOTIFY indexColorChanged)
 
     bool checkName();
 
     QString _text = "";
     QString _color = "black";
 
-    int _index;
+    QString _indexColor = "grey";
 
     bool _valid = false;
     ValidCondition _validCondition = E_Name;
@@ -51,19 +51,19 @@ public:
 
     QString text();
     QString color();
-    int index();
+    QString indexColor();
 
 signals:
     void textChanged();
     void colorChanged();
-    void indexChanged();
+    void indexColorChanged();
 
 public slots:
     bool valid();
     void setText(QString input);
     void setColor(QString input);
     void setValidCondition(ValidCondition condition);
-    void setIndex(int index);
+    void setIndexColor(QString input);
 
 };
 
@@ -109,6 +109,7 @@ public slots:
     void setMemberType(QString name, int index);
 
     void removeMember(int index);
+    void moveMember(int fromIndex, int toIndex);
 
 };
 
