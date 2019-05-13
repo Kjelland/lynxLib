@@ -1,6 +1,7 @@
-import QtQuick 2.6
-import backendclass 1.0
+import QtQuick 2.10
 import QtQuick.Controls 2.3
+import backendclass 1.0
+
 
 Item
 {
@@ -13,12 +14,19 @@ Item
     property bool showCross: false
     property int originalX
     property int originalY
+    property string memberText: ""
 
     signal acceptedEnter(int _currentEnumIndex)
     signal enumChanged(string _text, int _index)
     signal textChanged(string _text, bool _valid, int _index)
     signal removeButtonClicked(int _index)
     signal dropped(int _dragIndex, int _dropindex)
+
+    onMemberTextChanged:
+    {
+        info.setText(memberText)
+        memberItem.textChanged(info.text, info.valid(), index)
+    }
 
     width: 400
     height: 50

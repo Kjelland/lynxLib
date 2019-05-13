@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QFile>
+#include <QDebug>
 
 struct TextHandlerLight
 {
@@ -72,11 +73,11 @@ class BackEnd : public QObject
     Q_OBJECT
 
     Q_PROPERTY(QString outputText READ outputText WRITE setOutputText NOTIFY outputTextChanged)
-    Q_PROPERTY(bool openFileDialog READ openFileDialog WRITE setOpenFileDialog NOTIFY openFileDialogChanged)
+    Q_PROPERTY(bool saveFileDialog READ saveFileDialog WRITE setSaveFileDialog NOTIFY saveFileDialogChanged)
 
     QString _outputText = "";
 
-    bool _openFileDialog = false;
+    bool _saveFileDialog = false;
     QString _filePath = "";
 
     TextHandlerLight _structName;
@@ -90,17 +91,25 @@ public:
     bool buttonWrite();
     QString outputText();
 
-    bool openFileDialog() { return _openFileDialog; }
+    bool saveFileDialog() { return _saveFileDialog; }
 
 signals:
     void outputTextChanged();
-    void openFileDialogChanged();
+    void saveFileDialogChanged();
+
+    void setStructIdQml(QString text);
+    void setStructNameQml(QString text);
+    void addStructItemQml(int index, QString text, int typeIndex = 0);
+    void setStructItemTypeQml(int index, int typeIndex);
+    void resetStructItemList();
 
 public slots:
     void buttonSaveClicked();
     void buttonBrowseClicked();
-    void setOpenFileDialog(bool input) { _openFileDialog = input; }
-    void pathSelected(QString path);
+    void setSaveFileDialog(bool input) { _saveFileDialog = input; }
+    void savePathSelected(QString path);
+
+    void openPathSelected(QString path);
 
     void setOutputText(QString input);
     void setStructName(QString name, bool valid);

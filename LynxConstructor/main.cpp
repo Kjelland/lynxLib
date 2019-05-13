@@ -8,6 +8,10 @@ int main(int argc, char *argv[])
 
     QGuiApplication app(argc, argv);
 
+    app.setOrganizationName("Some Company");
+    app.setOrganizationDomain("somecompany.com");
+    app.setApplicationName("Amazing Application");
+
     qmlRegisterType<BackEnd>("backendclass", 1, 0, "BackEnd");
     qmlRegisterType<TextHandler>("backendclass", 1, 0, "TextHandler");
     // qmlRegisterType<NameHandler::ValidCondition>("validcondition", 1, 0, "ValidCondition");

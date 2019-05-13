@@ -1,5 +1,5 @@
-import QtQuick 2.6
-import QtQuick.Window 2.2
+import QtQuick 2.10
+import QtQuick.Window 2.10
 import QtQuick.Controls 2.3
 import backendclass 1.0
 // import texthandlerclass 1.0
@@ -7,8 +7,11 @@ import QtQuick.Dialogs 1.2
 // import validcondition 1.0
 // import Qt.labs.platform
 
+
+
 Window
 {
+
     id: mainWindow
 
     property string themeColorMain: "steelblue"
@@ -23,12 +26,30 @@ Window
     BackEnd
     {
         id: backEnd
+        onSetStructIdQml:
+        {
+            structId.setText(text)
+        }
+        onSetStructNameQml:
+        {
+            structName.setText(text)
+        }
+        onAddStructItemQml:
+        {
+            listModel.append({ indexIn: listModel.count, enumIndexIn: typeIndex, textIn: text, showCrossIn: listModel.count > 0})
+
+            backEnd.setMemberName(text, true, listModel.count - 1);
+
+            if(listModel.count == 2)
+                listModel.setProperty(0, "showCrossIn", true )
+        }
+        onResetStructItemList: listModel.clear()
+        onSetStructItemTypeQml:
+        {
+            listModel.setProperty(index, "enumIndexIn", typeIndex)
+        }
+
     }
-
-
-
-
-
 
     Row
     {
@@ -108,7 +129,7 @@ Window
     ListModel
     {
         id: listModel
-        ListElement { indexIn: 0; enumIndexIn: 0; showCrossIn: false  }
+        ListElement { indexIn: 0; enumIndexIn: 0; textIn: ""; showCrossIn: false  }
     }
 
     Component
@@ -120,6 +141,7 @@ Window
             enumIndex: enumIndexIn
             showCross: showCrossIn
             themeColor: themeColorMain
+            memberText: textIn
 
             function reorder(fromIndex, toIndex)
             {
@@ -127,20 +149,15 @@ Window
                 for(i = fromIndex; i <= toIndex; i++)
                 {
                     listModel.setProperty(i, "indexIn", i)
-//                    if(i < listModel.count - 1)
-//                        listModel.setProperty(i, "showCrossIn", false )
-//                    else
-//                        listModel.setProperty(i, "showCrossIn", true )
                 }
             }
 
             onAcceptedEnter:
             {
-                // listModel.setProperty(listModel.count - 1, "showCrossIn", false )
-                listModel.append({ indexIn: listModel.count, enumIndexIn: _currentEnumIndex, showCrossIn: true })
+                listModel.append({ indexIn: listModel.count, enumIndexIn: _currentEnumIndex, textIn: "", showCrossIn: true })
+
                 if(listModel.count == 2)
                     listModel.setProperty(0, "showCrossIn", true )
-                // scrollView.flickableItem.contentY = 5
             }
             onTextChanged: backEnd.setMemberName(_text, _valid, _index)
             onEnumChanged: backEnd.setMemberType(_text, _index)
@@ -149,6 +166,7 @@ Window
                 listModel.remove(_index)
                 backEnd.removeMember(_index)
                 reorder(_index, listModel.count - 1)
+
                 if(listModel.count == 1)
                     listModel.setProperty(0, "showCrossIn", false )
             }
@@ -181,14 +199,14 @@ Window
 
         property string borderColor: themeColorMain
 
-        width: bottomRow.width
+        width: mainWindow.width - bottomRow.margin*2
         height: 45
 
         anchors.bottom: bottomRow.top
         anchors.left: bottomRow.left
         anchors.bottomMargin: 10
 
-        text: "Output: " + backEnd.outputText
+        text: backEnd.outputText
         verticalAlignment: Text.AlignVCenter
         horizontalAlignment: Text.AlignHCenter
 
@@ -215,27 +233,38 @@ Window
         MyButton
         {
             text: qsTr("Save")
-            // height: parent.height
             color: bottomRow.buttonColor
             onClicked: backEnd.buttonSaveClicked()
         }
 
         MyButton
         {
-            text: qsTr("Browse")
-            // height: parent.height
+            text: qsTr("Select Folder")
             color: bottomRow.buttonColor
             onClicked: backEnd.buttonBrowseClicked()
         }
 
         MyButton
         {
-            text: qsTr("Exit")
-            // height: parent.height
+            text: qsTr("Open")
             color: bottomRow.buttonColor
-            onClicked: Qt.quit()
+            onClicked:
+            {
+                openPathDialog.visible = true
+            }
         }
     }
+
+    MyButton
+    {
+        height: bottomRow.height
+        anchors.top: bottomRow.top
+        x: mainWindow.width - width - bottomRow.margin
+        text: qsTr("Exit")
+        color: mainWindow.themeColorMain
+        onClicked: Qt.quit()
+    }
+
 
     FileDialog
     {
@@ -245,17 +274,40 @@ Window
         selectFolder: true
         onAccepted:
         {
-            backEnd.pathSelected(fileUrl)
-            backEnd.setOpenFileDialog(false)
+            backEnd.savePathSelected(fileUrl)
+            backEnd.setSaveFileDialog(false)
             close()
         }
         onRejected:
         {
-            backEnd.setOpenFileDialog(false)
+            backEnd.setSaveFileDialog(false)
             close()
         }
 
-        visible: backEnd.openFileDialog
+        visible: backEnd.saveFileDialog
+    }
+
+    FileDialog
+    {
+        id: openPathDialog
+        title: qsTr("Please choose a file")
+        folder: "D:/QT projects/LynxConstructor/testFolder"
+        nameFilters: { "C/C++ header files (*.h)" }
+        onAccepted:
+        {
+            visible = false
+            // backEnd.setOutputText("You selected: " + openPathDialog.fileUrl)
+            backEnd.openPathSelected(openPathDialog.fileUrl)
+            close()
+        }
+        onRejected:
+        {
+            visible = false
+            backEnd.setOutputText("You canceled")
+            close()
+        }
+
+        visible: false
     }
 
 }
