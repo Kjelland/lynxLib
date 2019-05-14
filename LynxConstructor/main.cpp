@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 
     qmlRegisterType<BackEnd>("backendclass", 1, 0, "BackEnd");
     qmlRegisterType<TextHandler>("backendclass", 1, 0, "TextHandler");
-    // qmlRegisterType<NameHandler::ValidCondition>("validcondition", 1, 0, "ValidCondition");
+    qmlRegisterType<StructInfo>("backendclass", 1, 0, "StructInfo");
 
     QQmlApplicationEngine engine;
     const QUrl url(QStringLiteral("qrc:/main.qml"));

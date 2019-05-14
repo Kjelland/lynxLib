@@ -8,25 +8,23 @@ Item
     id: memberItem
 
     property string themeColor: "grey"
+    property string themeAccentColor: Qt.lighter(themeColor, 2.1)
+
     property int index: 0
     property int enumIndex: 0
-    property string dragDropKey: "key1"
+    property string enumText: ""
     property bool showCross: false
+    property string memberText: ""
+    property bool valid
+
     property int originalX
     property int originalY
-    property string memberText: ""
+    property string dragDropKey: "key1"
 
     signal acceptedEnter(int _currentEnumIndex)
-    signal enumChanged(string _text, int _index)
-    signal textChanged(string _text, bool _valid, int _index)
     signal removeButtonClicked(int _index)
     signal dropped(int _dragIndex, int _dropindex)
-
-    onMemberTextChanged:
-    {
-        info.setText(memberText)
-        memberItem.textChanged(info.text, info.valid(), index)
-    }
+    // signal validChanged(bool valid)
 
     width: 400
     height: 50
@@ -89,7 +87,6 @@ Item
             {
                 if(row1.Drag.target !== null)
                 {
-                    // console.log("\ndragIndex: " + index, "\ndropIndex: " + row1.Drag.target.dropIndex)
                     dropped(index, row1.Drag.target.dropIndex)
                 }
 
@@ -115,12 +112,15 @@ Item
                     PropertyChanges { target: row1; z: 100; }
                 }
 
+
                 Rectangle
                 {
                     id: indexRect
                     height: parent.height
                     width: height
                     color: info.indexColor
+                    border.color: themeColor
+                    border.width: 1
                     radius: height > width ? width/5 : height/5
 
                     Text
@@ -134,25 +134,25 @@ Item
                         font.pointSize: 12
                     }
 
+
                 }
 
                 MyTextField
                 {
                     width: 200
                     height: parent.height
-                    text: info.text
+                    text: memberText
                     color: info.color
                     borderColor: themeColor
+                    backgroundColor: themeAccentColor
                     placeholderText: qsTr("Element Name")
                     selectByMouse: true
                     onTextChanged:
                     {
-                        info.setText(text);
-                        memberItem.textChanged(info.text, info.valid(), index)
+                        info.setText(text)
                     }
                     onAccepted:
                     {
-                        // showCross = false
                         acceptedEnter(typeId.currentIndex)
                     }
 
@@ -166,12 +166,10 @@ Item
                     height: parent.height
                     color: themeColor
                     model: enumList
-                    onActivated: enumChanged(currentText, memberItem.index)
-                    Component.onCompleted:
-                    {
-                        currentIndex = enumIndex
-                        enumChanged(currentText, memberItem.index)
-                    }
+                    currentIndex: enumIndex
+                    onCurrentIndexChanged: enumIndex = currentIndex
+                    onCurrentTextChanged: enumText = currentText
+
                 }
 
                 Button
@@ -219,9 +217,8 @@ Item
     TextHandler
     {
         id: info
-        Component.onCompleted:
-        {
-        }
+        onValidChanged: memberItem.valid = info.valid
+        onTextChanged: memberItem.memberText = text
     }
 
     ListModel

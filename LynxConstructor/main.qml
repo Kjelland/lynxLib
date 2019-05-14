@@ -15,40 +15,67 @@ Window
     id: mainWindow
 
     property string themeColorMain: "steelblue"
+    property string themeAccentColorMain: Qt.lighter(themeColorMain, 2.15)
     property string themeColorBackgnd: "white"
 
     visible: true
     width: 640
     height: 480
+    minimumWidth: 480
+    minimumHeight: 480
     title: qsTr("Lynx Constructor")
     color: themeColorBackgnd
+
+    Rectangle
+    {
+        id: mainBackground
+        anchors.fill: parent
+        color: themeColorMain
+        gradient:
+            Gradient
+            {
+                GradientStop { position: 0 ; color: themeColorBackgnd }
+                GradientStop { position: 0.8 ; color: Qt.lighter(themeColorMain, 1.8) }
+                GradientStop { position: 0.9 ; color: themeColorMain }
+                GradientStop { position: 1 ; color: Qt.darker(themeColorMain, 1.8) }
+            }
+    }
+
+    function addMember(index, typeIndex, text)
+    {
+        listModel.append({ indexIn: index, enumIndexIn: typeIndex, textIn: text, showCrossIn: (listModel.count > 0) })
+        if(listModel.count == 2)
+            listModel.setProperty(0, "showCrossIn", true)
+    }
+
+    function populateStructInfo()
+    {
+        // console.log(listModel.get(0).validIn)
+        structInfo.setStructName(structName.text, structName.valid)
+        structInfo.setStructId(structId.text, structId.valid)
+
+        for(var i = 0; i < listModel.count; i++)
+        {
+            structInfo.addStructMember(listModel.get(i).textIn, listModel.get(i).enumTextIn, listModel.get(i).validIn)
+        }
+
+    }
+
+    StructInfo
+    {
+        id: structInfo
+        // onClearMemberList: listModel.clear()
+    }
 
     BackEnd
     {
         id: backEnd
-        onSetStructIdQml:
+        onPushStructName: structName.text = text
+        onPushStructId: structId.text = text
+        onPushStructMember:
         {
-            structId.setText(text)
+            addMember(listModel.count, typeIndex, text)
         }
-        onSetStructNameQml:
-        {
-            structName.setText(text)
-        }
-        onAddStructItemQml:
-        {
-            listModel.append({ indexIn: listModel.count, enumIndexIn: typeIndex, textIn: text, showCrossIn: listModel.count > 0})
-
-            backEnd.setMemberName(text, true, listModel.count - 1);
-
-            if(listModel.count == 2)
-                listModel.setProperty(0, "showCrossIn", true )
-        }
-        onResetStructItemList: listModel.clear()
-        onSetStructItemTypeQml:
-        {
-            listModel.setProperty(index, "enumIndexIn", typeIndex)
-        }
-
     }
 
     Row
@@ -65,13 +92,11 @@ Window
             text: structName.text
             color: structName.color
             borderColor: themeColorMain
+            backgroundColor: themeAccentColorMain
             placeholderText: qsTr("Struct Name")
             selectByMouse: true
-            onTextChanged:
-            {
-                structName.setText(text)
-                backEnd.setStructName(structName.text, structName.valid())
-            }
+            onTextChanged: structName.setText(text)
+
             TextHandler
             {
                 id: structName
@@ -86,14 +111,11 @@ Window
             width: 70
             color: structId.color
             borderColor: themeColorMain
+            backgroundColor: themeAccentColorMain
             text: structId.text
             placeholderText: qsTr("Struct ID")
             selectByMouse: true
-            onTextChanged:
-            {
-                structId.setText(text)
-                backEnd.setStructId(structId.text, structId.valid())
-            }
+            onTextChanged: structId.setText(text)
 
             TextHandler
             {
@@ -122,26 +144,33 @@ Window
             model: listModel
             delegate: listItemDelegate
         }
-
-
     }
 
     ListModel
     {
         id: listModel
-        ListElement { indexIn: 0; enumIndexIn: 0; textIn: ""; showCrossIn: false  }
+        ListElement { indexIn: 0; enumIndexIn: 0; textIn: ""; showCrossIn: false; enumTextIn: ""; validIn: false  }
     }
 
     Component
     {
         id: listItemDelegate
+
         ElementListItem
         {
             index: indexIn
             enumIndex: enumIndexIn
             showCross: showCrossIn
-            themeColor: themeColorMain
             memberText: textIn
+            enumText:  enumTextIn
+            valid: validIn
+            themeColor: themeColorMain
+            themeAccentColor: themeAccentColorMain
+
+            onEnumIndexChanged: enumIndexIn = enumIndex
+            onMemberTextChanged: textIn = memberText
+            onEnumTextChanged: enumTextIn = enumText
+            onValidChanged: validIn = valid
 
             function reorder(fromIndex, toIndex)
             {
@@ -152,36 +181,27 @@ Window
                 }
             }
 
-            onAcceptedEnter:
-            {
-                listModel.append({ indexIn: listModel.count, enumIndexIn: _currentEnumIndex, textIn: "", showCrossIn: true })
+            onAcceptedEnter: addMember(listModel.count, _currentEnumIndex, "")
 
-                if(listModel.count == 2)
-                    listModel.setProperty(0, "showCrossIn", true )
-            }
-            onTextChanged: backEnd.setMemberName(_text, _valid, _index)
-            onEnumChanged: backEnd.setMemberType(_text, _index)
             onRemoveButtonClicked:
             {
                 listModel.remove(_index)
-                backEnd.removeMember(_index)
                 reorder(_index, listModel.count - 1)
 
                 if(listModel.count == 1)
                     listModel.setProperty(0, "showCrossIn", false )
             }
+
             onDropped:
             {
                 if(_dragIndex > _dropindex)
                 {
                     listModel.move(_dragIndex, _dropindex, 1)
-                    backEnd.moveMember(_dragIndex, _dropindex)
                     reorder(_dropindex, _dragIndex)
                 }
                 else if(_dropindex > _dragIndex)
                 {
                     listModel.move(_dragIndex, _dropindex - 1, 1)
-                    backEnd.moveMember(_dragIndex, _dropindex - 1)
                     reorder(_dragIndex, _dropindex - 1)
                 }
                 else
@@ -234,24 +254,28 @@ Window
         {
             text: qsTr("Save")
             color: bottomRow.buttonColor
-            onClicked: backEnd.buttonSaveClicked()
+            enabled: backEnd.pathSelected
+            onClicked:
+            {
+                populateStructInfo()
+                backEnd.saveStruct(structInfo)
+                structInfo.clear()
+            }
         }
 
         MyButton
         {
             text: qsTr("Select Folder")
             color: bottomRow.buttonColor
-            onClicked: backEnd.buttonBrowseClicked()
+            onClicked: savePathDialog.visible = true
         }
 
         MyButton
         {
             text: qsTr("Open")
             color: bottomRow.buttonColor
-            onClicked:
-            {
-                openPathDialog.visible = true
-            }
+            onClicked: openPathDialog.visible = true
+
         }
     }
 
@@ -275,16 +299,15 @@ Window
         onAccepted:
         {
             backEnd.savePathSelected(fileUrl)
-            backEnd.setSaveFileDialog(false)
             close()
         }
         onRejected:
         {
-            backEnd.setSaveFileDialog(false)
+            backEnd.outputText = "You cancelled"
             close()
         }
 
-        visible: backEnd.saveFileDialog
+        visible: false
     }
 
     FileDialog
@@ -295,15 +318,20 @@ Window
         nameFilters: { "C/C++ header files (*.h)" }
         onAccepted:
         {
-            visible = false
-            // backEnd.setOutputText("You selected: " + openPathDialog.fileUrl)
-            backEnd.openPathSelected(openPathDialog.fileUrl)
+            listModel.clear()
+            structName.text = ""
+            structId.text = ""
+
+            backEnd.openPathSelected(fileUrl)
+
+            if(listModel.count < 1)
+                addMember(0, 0, "");
+
             close()
         }
         onRejected:
         {
-            visible = false
-            backEnd.setOutputText("You canceled")
+            backEnd.outputText = "You cancelled"
             close()
         }
 

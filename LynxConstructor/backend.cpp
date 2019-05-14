@@ -1,9 +1,53 @@
 #include "backend.h"
 
-TextHandler::TextHandler(QObject *parent) : QObject(parent)
-{
+//-----------------------------------------------------------------
+//------------------------- StructInfo ----------------------------
+//-----------------------------------------------------------------
 
+StructInfo::StructInfo(QObject *parent) : QObject(parent){};
+
+const TextInfo& StructInfo::structName()
+{
+    return _structName;
 }
+
+const TextInfo& StructInfo::structId()
+{
+    return _structId;
+}
+
+const TextTypeInfo* StructInfo::structMember(int index)
+{
+    if(_structMembers.count() <= index)
+        return nullptr;
+
+    return &_structMembers.at(index);
+}
+
+void StructInfo::setStructName(QString text, bool valid)
+{
+    _structName.text = text;
+    _structName.valid = valid;
+}
+
+
+void StructInfo::setStructId(QString text, bool valid)
+{
+    _structId.text = text;
+    _structId.valid = valid;
+}
+
+void StructInfo::addStructMember(QString text, QString type, bool valid)
+{
+    _structMembers.append(TextTypeInfo(text, type, valid));
+}
+
+
+//-----------------------------------------------------------------
+//------------------------ TextHandler ----------------------------
+//-----------------------------------------------------------------
+
+TextHandler::TextHandler(QObject *parent) : QObject(parent){};
 
 void TextHandler::setText(QString input)
 {
@@ -16,7 +60,16 @@ void TextHandler::setText(QString input)
     }
 
     _text = input;
+
+    bool temp = _valid;
+
     _valid = this->checkName();
+
+    if(_valid ^ temp)
+    {
+        emit validChanged();
+        // qDebug() << (valid()?"true":"false");
+    }
 
     if(_valid)
     {
@@ -65,16 +118,6 @@ QString TextHandler::text()
     return _text;
 }
 
-QString TextHandler::color()
-{
-    return _color;
-}
-
-QString TextHandler::indexColor()
-{
-    return _indexColor;
-}
-
 bool TextHandler::checkName()
 {
     switch(_validCondition)
@@ -90,6 +133,7 @@ bool TextHandler::checkName()
 
 bool TextHandler::validateName()
 {
+
     if(_text.count() < 1)
         return false;
 
@@ -175,148 +219,218 @@ bool TextHandler::validateNumber()
     return true;
 }
 
+//-----------------------------------------------------------------
+//--------------------------- BackEnd -----------------------------
+//-----------------------------------------------------------------
+
 BackEnd::BackEnd(QObject *parent) :
     QObject(parent)
 {
-    this->savePathSelected("../testFolder");
+    // this->savePathSelected("../testFolder");
 }
 
-void BackEnd::buttonSaveClicked()
+void BackEnd::outputText(QString text)
 {
-    if(!_structName.valid) //!_className.valid())
-    {
-        setOutputText("Invalid name");
+    if(text == _outputText)
         return;
+
+    _outputText = text;
+    emit outputTextChanged();
+}
+
+void BackEnd::setFilePathMode(E_FilePathMode mode)
+{
+    if(pathSelected() != bool(mode))
+    {
+        _filePathMode = mode;
+        emit pathSelectedChanged();
     }
 
-    if(!_structId.valid) //!_structId.valid())
+    _filePathMode = mode;
+}
+
+bool BackEnd::pathSelected()
+{
+    return bool(_filePathMode);
+}
+
+void BackEnd::savePathSelected(QString path)
+{
+    _filePath = path.remove("file:///") + "/";
+    setFilePathMode(eFolderPath);
+    outputText(_filePath);
+}
+
+
+
+void BackEnd::saveStruct(StructInfo* structInfo)
+{
+    QString errorMessage = "";
+
+    if(!structInfo->structName().valid)
     {
-        setOutputText("Invalid struct ID");
-        return;
+        errorMessage += "Invalid struct name. ";
     }
 
-    for (int i = 0; i < _memberInfo.count(); i++)
+    if(!structInfo->structId().valid) //!_structId.valid())
     {
-        if(!_memberInfo.at(i).valid)
+        errorMessage += "Invalid struct ID. ";
+    }
+
+    QList<int> invalidMembers;
+
+    for (int i = 0; i < structInfo->memberCount(); i++)
+    {
+        if(!structInfo->structMember(i)->valid)
         {
-            setOutputText("One or more members are invalid");
-            return;
+            invalidMembers.append(i);
         }
     }
 
-    QString fullPath = _filePath + "/" + _structName.text.toLower() + "struct" + ".h";
+    if(invalidMembers.count())
+    {
+        if(invalidMembers.count() > 1)
+            errorMessage += "Struct members ";
+        else
+            errorMessage += "Struct member ";
 
-    QFile file(fullPath);
+        for (int i = 0; i < invalidMembers.count(); i++)
+        {
+            errorMessage += QString::number(invalidMembers.at(i));
+
+            if(i < invalidMembers.count() - 2)
+                errorMessage += ", ";
+            else if(i == invalidMembers.count() - 2)
+                errorMessage += " and ";
+        }
+
+        if(invalidMembers.count() > 1)
+            errorMessage += " are ";
+         else
+            errorMessage += " is ";
+
+        errorMessage += "invalid. ";
+    }
+
+    if(errorMessage != "")
+    {
+        outputText(errorMessage);
+        return;
+    }
+
+
+
+    switch(_filePathMode)
+    {
+        case eNoPath:
+        {
+            outputText("No file path selected");
+            return;
+        }
+        case eFolderPath:
+        {
+            _filePath += structInfo->structName().text.toLower() + "struct.h";
+            setFilePathMode(eFullPath);
+            break;
+        }
+        case eFullPath:
+        {
+           break;
+        }
+    }
+
+
+    QFile file(_filePath);
 
     if(file.exists())
         file.remove();
 
-    if(file.open(QIODevice::WriteOnly))
+    if(!file.open(QIODevice::WriteOnly))
     {
-        QString STRUCT_NAME = _structName.text.toUpper();
-        QString StructName = _structName.text.left(1).toUpper() + _structName.text.right(_structName.text.size() - 1);
-        QString structName = _structName.text.left(1).toLower() + _structName.text.right(_structName.text.size() - 1);
-
-
-        //-------------- define -----------------
-        QString temp = "#ifndef " + STRUCT_NAME + "_STRUCT" + "\r\n#define " + STRUCT_NAME + "_STRUCT" + " " + _structId.text + "\r\n\r\n";
-        file.write(temp.toLatin1());
-
-        //------------- include -----------------
-        temp = "#include \"LynxStructure.h\"\r\n\r\n";
-        file.write(temp.toLatin1());
-
-        //--------------- using -----------------
-        temp = "using namespace LynxLib;\r\n\r\n";
-        file.write(temp.toLatin1());
-
-        //--------------- enum ------------------
-        temp = "enum E_" + StructName + "Contents\r\n{\r\n";
-        file.write(temp.toLatin1());
-
-        for (int i = 0; i < _memberInfo.count(); i++)
-        {
-            temp = "\t" +_memberInfo.at(i).text + ",\r\n";
-            file.write(temp.toLatin1());
-        }
-
-        temp = "\t" + structName + "Contents_EndOfList\r\n};\r\n\r\n";
-        file.write(temp.toLatin1());
-
-        //----------- structItems --------------
-        temp = "static const StructItem " + structName + "Items[]\r\n{\r\n";
-        file.write(temp.toLatin1());
-
-        for (int i = 0; i < _memberInfo.count(); i++)
-        {
-            temp = "\tStructItem( \"" + _memberInfo.at(i).text + "\", e" + _memberInfo.at(i).type + " ),\r\n";
-            file.write(temp.toLatin1());
-        }
-
-        temp = "\tStructItem( \"\", eEndOfList )\r\n};\r\n\r\n";
-        file.write(temp.toLatin1());
-
-        //---------- structDefinition -----------
-        temp = "static const StructDefinition " + structName + "Definition\r\n{\r\n";
-        file.write(temp.toLatin1());
-
-        temp = "\t\"" + StructName + " Struct\",\r\n\teStructureMode,\r\n\t" + structName + "Items\r\n};\r\n\r\n";
-        file.write(temp.toLatin1());
-
-
-        //--------------- end -------------------
-        temp = "#endif // " + STRUCT_NAME + "_STRUCT";
-        file.write(temp.toLatin1());
-
-        file.close();
-        setOutputText("File Saved to: " + fullPath);
-    }
-    else
-    {
-        setOutputText("Could not open file");
-    }
-}
-
-void BackEnd::buttonBrowseClicked()
-{
-    if(_saveFileDialog)
-    {
-        setOutputText("File dialog is already open in a different window");
-
+        outputText("Could not open file: " + _filePath);
         return;
     }
 
-    _saveFileDialog = true;
-    emit saveFileDialogChanged();
+    QString STRUCT_NAME = structInfo->structName().text.toUpper();
+
+    QString StructName = structInfo->structName().text.left(1).toUpper()
+            + structInfo->structName().text.right(structInfo->structName().text.size() - 1);
+
+    QString structName = structInfo->structName().text.left(1).toLower()
+            + structInfo->structName().text.right(structInfo->structName().text.size() - 1);
+
+
+    //-------------- define -----------------
+    QString temp = "#ifndef " + STRUCT_NAME + "_STRUCT" + "\r\n#define " + STRUCT_NAME + "_STRUCT" + " " + structInfo->structId().text + "\r\n\r\n";
+    file.write(temp.toLatin1());
+
+    //------------- include -----------------
+    temp = "#include \"LynxStructure.h\"\r\n\r\n";
+    file.write(temp.toLatin1());
+
+    //--------------- using -----------------
+    temp = "using namespace LynxLib;\r\n\r\n";
+    file.write(temp.toLatin1());
+
+    //--------------- enum ------------------
+    temp = "enum E_" + StructName + "Contents\r\n{\r\n";
+    file.write(temp.toLatin1());
+
+    for (int i = 0; i < structInfo->memberCount(); i++)
+    {
+        temp = "\t" + structInfo->structMember(i)->text + ",\r\n";
+        file.write(temp.toLatin1());
+    }
+
+    temp = "\t" + structName + "Contents_EndOfList\r\n};\r\n\r\n";
+    file.write(temp.toLatin1());
+
+    //----------- structItems --------------
+    temp = "static const StructItem " + structName + "Items[]\r\n{\r\n";
+    file.write(temp.toLatin1());
+
+    for (int i = 0; i < structInfo->memberCount(); i++)
+    {
+        temp = "\tStructItem( \"" + structInfo->structMember(i)->text + "\", e" + structInfo->structMember(i)->type + " ),\r\n";
+        file.write(temp.toLatin1());
+    }
+
+    temp = "\tStructItem( \"\", eEndOfList )\r\n};\r\n\r\n";
+    file.write(temp.toLatin1());
+
+    //---------- structDefinition -----------
+    temp = "static const StructDefinition " + structName + "Definition\r\n{\r\n";
+    file.write(temp.toLatin1());
+
+    temp = "\t\"" + StructName + " Struct\",\r\n\teStructureMode,\r\n\t" + structName + "Items\r\n};\r\n\r\n";
+    file.write(temp.toLatin1());
+
+
+    //--------------- end -------------------
+    temp = "#endif // " + STRUCT_NAME + "_STRUCT";
+    file.write(temp.toLatin1());
+
+    file.close();
+    outputText("File Saved to: " + _filePath);
 }
 
-QString BackEnd::outputText()
-{
-    return _outputText;
-}
-
-
-void BackEnd::savePathSelected(QString path)
-{
-    _filePath = path.remove("file:///");
-    setOutputText(_filePath + "/" + _structName.text.toLower() + "struct.h");
-}
 
 void BackEnd::openPathSelected(QString path)
 {
-    QString fullPath = path.remove("file:///");
+    _filePath = path.remove("file:///");
+    setFilePathMode(eFullPath);
 
-    QFile file(fullPath);
+    QFile file(_filePath);
 
     if(!file.exists())
     {
-        setOutputText("File: \"" + fullPath + "\" does not exist.");
+        outputText("File: " + _filePath + " does not exist.");
         return;
     }
 
     if(!file.open(QIODevice::ReadOnly))
     {
-        setOutputText("Could not open file");
+        outputText("Could not open file" + _filePath);
         return;
     }
 
@@ -330,8 +444,9 @@ void BackEnd::openPathSelected(QString path)
         eStructName,
         eStructMemberNames,
         eStructMemberTypes,
-        eDone,
-        eFailure
+        ePushStructMembers,
+        eExitLoop
+        // eFailure
     }state = eStructId;
 
     QList<QString> typeList =
@@ -348,12 +463,27 @@ void BackEnd::openPathSelected(QString path)
         "Double"
     };
 
-    int currentItem = 0;
-    int currentType = 0;
+    // int currentItem = 0;
+    int typeIndex = 0;
 
-    while((temp != "") && (state != eFailure) && (state != eDone))
+    QString structName = "";
+
+    QList<QString> structMemberNames;
+    QList<int> structMemberTypes;
+    bool typeListReserved = false;
+
+    bool minorErrorFlag = false;
+    bool majorErrorFlag = false;
+
+    while(state != eExitLoop)
     {
         temp = file.readLine();
+
+        if(temp == "")
+        {
+            majorErrorFlag = true;
+            state = ePushStructMembers;
+        }
 
         switch(state)
         {
@@ -363,7 +493,7 @@ void BackEnd::openPathSelected(QString path)
                 if(currentIndex < 0)
                     break;
 
-                QString number = "";
+                QString structID = "";
                 bool numberReached = false;
 
                 for (int i = currentIndex + int(sizeof("#define")); i < temp.count(); i++)
@@ -371,46 +501,50 @@ void BackEnd::openPathSelected(QString path)
                     if(temp[i].isNumber() || ((temp[i] == 'x') && numberReached) || ((temp[i] == 'X') && numberReached))
                     {
                         numberReached = true;
-                        number += temp[i];
+                        structID += temp[i];
                     }
                     else if(numberReached)
                         break;
 
                 }
 
-                if(number == "")
+                state = eStructName;
+
+                if(structID == "")
                 {
-                    state = eFailure;
+                    minorErrorFlag = true;
                     break;
                 }
 
-                setStructIdQml(number);
-                state = eStructName;
-
-                // qDebug() << number;
+                this->pushStructId(structID);
 
                 break;
             }
             case eStructName:
             {
                 currentIndex = temp.indexOf("Contents");
+                if(currentIndex < 0)
+                    break;
 
-                QString name = "";
+                structName = "";
 
                 for (int i = currentIndex - 1; i > 0; i--)
                 {
                     if((temp[i] == ' ') || (temp[i] == '_'))
                         break;
-                    name.insert(0, temp[i]);
+                    structName.insert(0, temp[i]);
                 }
 
-                if(name != "")
+                state = eStructMemberNames;
+
+                if(structName == "")
                 {
-                    name.replace(0, 1, name[0].toLower());
-                    setStructNameQml(name);
-                    state = eStructMemberNames;
-                    // qDebug() << _structName.text;
+                    structName = "0";
+                    minorErrorFlag = true;
                 }
+
+                structName.replace(0, 1, structName[0].toLower());
+                this->pushStructName(structName);
 
                 break;
             }
@@ -422,9 +556,6 @@ void BackEnd::openPathSelected(QString path)
                     break;
                 }
 
-                if(temp.contains('{'))
-                    break;
-
                 QString name = "";
 
                 for (int i = 0; i < temp.count(); i++)
@@ -435,15 +566,7 @@ void BackEnd::openPathSelected(QString path)
                     }
                     else if(temp[i] == ',')
                     {
-                        if(currentItem == 0)
-                        {
-                            resetStructItemList();
-                            _memberInfo.clear();
-                        }
-
-                        addStructItemQml(currentItem, name);
-                        currentItem++;
-                        // qDebug() << name;
+                        structMemberNames.append(name);
                         break;
                     }
                 }
@@ -452,24 +575,38 @@ void BackEnd::openPathSelected(QString path)
             }
             case eStructMemberTypes:
             {
+                if(!typeListReserved)
+                {
+                    structMemberTypes.reserve(structMemberNames.count());
+                    for (int i = 0; i < structMemberNames.count(); i++)
+                    {
+                        structMemberTypes.append(-1);
+                    }
+                    typeListReserved = true;
+                }
 
-                currentIndex = temp.indexOf(_memberInfo.at(currentType).text);
+                if(structMemberNames.count() == typeIndex)
+                {
+                    state = ePushStructMembers;
+                    break;
+                }
 
-                // qDebug() << currentType;
-                // qDebug() << _memberInfo.at(currentType).text;
-
+                currentIndex = temp.indexOf(structMemberNames.at(typeIndex));
                 if(currentIndex < 0)
                     break;
+
+                currentIndex += structMemberNames.at(typeIndex).count();
 
                 bool startFound = false;
                 QString typeName = "";
 
-                for (int i = currentIndex + _memberInfo.at(currentType).text.count(); i < temp.count(); i++)
+                for (int i = currentIndex; i < temp.count(); i++)
                 {
                     if(startFound)
                     {
-                        if((temp[i] == ' ') || (temp[i] == ')') || (temp[i] == '}'))
+                        if(!temp[i].isLetterOrNumber())
                             break;
+
                         typeName += temp[i];
                     }
                     else
@@ -479,31 +616,37 @@ void BackEnd::openPathSelected(QString path)
                     }
                 }
 
-                // qDebug() << typeName;
+                if(!startFound)
+                    break;
 
-                int typeIndex = -1;
                 for(int i = 0; i < typeList.count(); i++)
                 {
                     if(typeList.at(i) == typeName)
                     {
-                        typeIndex = i;
+                        structMemberTypes[typeIndex] = i;
                         break;
                     }
                 }
 
-                // qDebug() << typeIndex;
+                if(structMemberTypes[typeIndex] < 0)
+                    minorErrorFlag = true;
 
-                if(typeIndex >= 0)
+                typeIndex++;
+
+                break;
+            }
+            case ePushStructMembers:
+            {
+                for (int i = 0; i < structMemberNames.count(); i++)
                 {
-                    setStructItemTypeQml(currentType, typeIndex);
-                    currentType++;
-                    if((currentType >= currentIndex) || (currentType >= _memberInfo.count()))
-                    {
-                        state = eDone;
-                    }
+                    if(structMemberTypes.at(i) < 0)
+                        this->pushStructMember(structMemberNames.at(i), 0);
+                    else
+                        this->pushStructMember(structMemberNames.at(i), structMemberTypes.at(i));
+
                 }
 
-
+                state = eExitLoop;
                 break;
             }
             default:
@@ -511,76 +654,20 @@ void BackEnd::openPathSelected(QString path)
         }
     }
 
-    if(state == eDone)
+
+    if(majorErrorFlag)
     {
-        setOutputText("LynxStructure \"" + _structName.text + "\" successfully loaded");
+        outputText("Readout was incomplete, some information may be missing");
+    }
+    else if(minorErrorFlag)
+    {
+        outputText("LynxStructure \"" + structName.replace(0, 1, structName.at(0).toUpper()) + " Struct\" was loaded with errors, some information may be missing");
     }
     else
     {
-        setOutputText("Readout was incomplete, some information may be missing");
+        outputText("LynxStructure \"" + structName.replace(0, 1, structName.at(0).toUpper()) + " Struct\" successfully loaded");
     }
 
     file.close();
 }
 
-void BackEnd::setOutputText(QString input)
-{
-    if(input == _outputText)
-        return;
-
-    _outputText = input;
-    emit outputTextChanged();
-}
-
-void BackEnd::setStructName(QString name, bool valid)
-{
-    _structName.text = name;
-    _structName.valid = valid;
-}
-
-void BackEnd::setStructId(QString name, bool valid)
-{
-    _structId.text = name;
-    _structId.valid = valid;
-}
-
-void BackEnd::setMemberName(QString name, bool valid, int index)
-{
-    if(index >= _memberInfo.count())
-    {
-        TextHandlerType temp;
-
-        while(index >= _memberInfo.count())
-        {
-            _memberInfo.append(temp);
-        }
-    }
-
-    _memberInfo[index].text = name;
-    _memberInfo[index].valid = valid;
-}
-
-void BackEnd::setMemberType(QString type, int index)
-{
-    if(index >= _memberInfo.count())
-    {
-        TextHandlerType temp;
-
-        while(index >= _memberInfo.count())
-        {
-            _memberInfo.append(temp);
-        }
-    }
-
-    _memberInfo[index].type = type;
-}
-
-void BackEnd::removeMember(int index)
-{
-    _memberInfo.removeAt(index);
-}
-
-void BackEnd::moveMember(int fromIndex, int toIndex)
-{
-    _memberInfo.move(fromIndex, toIndex);
-}

@@ -5,16 +5,55 @@
 #include <QFile>
 #include <QDebug>
 
-struct TextHandlerLight
+struct TextInfo
 {
     QString text = "";
     bool valid = false;
 };
 
-struct TextHandlerType : public TextHandlerLight
+struct TextTypeInfo : public TextInfo
 {
     QString type = "";
+
+    TextTypeInfo(){}
+    TextTypeInfo(QString _text, QString _type, bool _valid){ text = _text; type = _type; valid = _valid; }
 };
+
+//-----------------------------------------------------------------
+//------------------------ StructInfo -----------------------------
+//-----------------------------------------------------------------
+
+class StructInfo : public QObject
+{
+    Q_OBJECT
+
+    TextInfo _structName;
+    TextInfo _structId;
+
+    QList<TextTypeInfo> _structMembers;
+
+public:
+    explicit StructInfo(QObject* parent = nullptr);
+
+    const TextInfo& structName();
+    const TextInfo& structId();
+    const TextTypeInfo* structMember(int index);
+    int memberCount() { return _structMembers.count(); }
+
+signals:
+    // void clearMemberList();
+
+public slots:
+    void setStructName(QString text, bool valid);
+    void setStructId(QString text, bool valid);
+    void addStructMember(QString text, QString type, bool valid);
+    void clear() { _structMembers.clear(); }
+
+};
+
+//-----------------------------------------------------------------
+//----------------------- TextHandler -----------------------------
+//-----------------------------------------------------------------
 
 class TextHandler : public QObject
 {
@@ -31,8 +70,9 @@ private:
     Q_OBJECT
 
     Q_PROPERTY(QString text READ text WRITE setText NOTIFY textChanged)
-    Q_PROPERTY(QString color READ color WRITE setColor NOTIFY colorChanged)
-    Q_PROPERTY(QString indexColor READ indexColor WRITE setIndexColor NOTIFY indexColorChanged)
+    Q_PROPERTY(QString color MEMBER _color NOTIFY colorChanged)
+    Q_PROPERTY(QString indexColor MEMBER _indexColor NOTIFY indexColorChanged)
+    Q_PROPERTY(bool valid READ valid NOTIFY validChanged)
 
     bool checkName();
 
@@ -51,74 +91,65 @@ public:
     explicit TextHandler(QObject *parent = nullptr);
 
     QString text();
-    QString color();
-    QString indexColor();
+    bool valid();
+
+    void setColor(QString input);
+    void setIndexColor(QString input);
 
 signals:
     void textChanged();
     void colorChanged();
     void indexColorChanged();
+    void validChanged();
 
 public slots:
-    bool valid();
     void setText(QString input);
-    void setColor(QString input);
     void setValidCondition(ValidCondition condition);
-    void setIndexColor(QString input);
 
 };
+
+//-----------------------------------------------------------------
+//--------------------------- BackEnd -----------------------------
+//-----------------------------------------------------------------
 
 class BackEnd : public QObject
 {
     Q_OBJECT
 
-    Q_PROPERTY(QString outputText READ outputText WRITE setOutputText NOTIFY outputTextChanged)
-    Q_PROPERTY(bool saveFileDialog READ saveFileDialog WRITE setSaveFileDialog NOTIFY saveFileDialogChanged)
+    Q_PROPERTY(QString outputText MEMBER _outputText NOTIFY outputTextChanged)
+    Q_PROPERTY(bool pathSelected READ pathSelected NOTIFY pathSelectedChanged)
 
     QString _outputText = "";
-
-    bool _saveFileDialog = false;
     QString _filePath = "";
 
-    TextHandlerLight _structName;
-    TextHandlerLight _structId;
-    QList<TextHandlerType> _memberInfo;
+    enum E_FilePathMode
+    {
+        eNoPath = 0,
+        eFolderPath,
+        eFullPath
+    }_filePathMode = eNoPath;
 
 public:
-
     explicit BackEnd(QObject *parent = nullptr);
 
-    bool buttonWrite();
-    QString outputText();
+    void outputText(QString text);
 
-    bool saveFileDialog() { return _saveFileDialog; }
+    bool pathSelected();
+    void setFilePathMode(E_FilePathMode mode);
 
 signals:
     void outputTextChanged();
-    void saveFileDialogChanged();
+    void pathSelectedChanged();
 
-    void setStructIdQml(QString text);
-    void setStructNameQml(QString text);
-    void addStructItemQml(int index, QString text, int typeIndex = 0);
-    void setStructItemTypeQml(int index, int typeIndex);
-    void resetStructItemList();
+    void pushStructName(QString text);
+    void pushStructId(QString text);
+    void pushStructMember(QString text, int typeIndex);
 
 public slots:
-    void buttonSaveClicked();
-    void buttonBrowseClicked();
-    void setSaveFileDialog(bool input) { _saveFileDialog = input; }
+    void saveStruct(StructInfo* structInfo);
     void savePathSelected(QString path);
-
     void openPathSelected(QString path);
 
-    void setOutputText(QString input);
-    void setStructName(QString name, bool valid);
-    void setStructId(QString name, bool valid);
-    void setMemberName(QString name, bool valid, int index);
-    void setMemberType(QString name, int index);
-
-    void removeMember(int index);
-    void moveMember(int fromIndex, int toIndex);
 
 };
 
