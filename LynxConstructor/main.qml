@@ -109,6 +109,7 @@ Window
     {
         id: scrollView
         width: 420
+        anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: row1.bottom
         anchors.bottom: outputBox.top
         anchors.bottomMargin: 50
