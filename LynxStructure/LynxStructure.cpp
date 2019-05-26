@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------------------------------------------
-//---------------------------------------------------- Version 1.2.0.3 ----------------------------------------------------------
+//---------------------------------------------------- Version 1.3.0.1 ----------------------------------------------------------
 //-------------------------------------------------------------------------------------------------------------------------------
 
 #include"LynxStructure.h"
@@ -197,7 +197,7 @@ namespace LynxLib
 				return tempSize;
 		}
 
-        return tempSize;
+        return index;
 
 	}
 
@@ -211,9 +211,19 @@ namespace LynxLib
 	}
 
 	// Returns the size of the datapackage in bytes (not including identifiers and checksum)
-	int LynxStructure::getTransferSize()
+    int LynxStructure::getTransferSize(int subIndex)
 	{
-		return (this->_structDefinition->transferSize + LYNX_ID_BYTES + LYNX_INDEXER_BYTES + LYNX_CHECKSUM_BYTES);
+        if(subIndex < 0)
+            return (this->_structDefinition->transferSize + LYNX_ID_BYTES + LYNX_INDEXER_BYTES + LYNX_CHECKSUM_BYTES);
+        else
+        {
+            int temp = this->checkTransferSize(_structDefinition->structItems[subIndex].dataType);
+            if(temp < 1)
+                return temp;
+
+            temp += LYNX_ID_BYTES + LYNX_INDEXER_BYTES + LYNX_CHECKSUM_BYTES;
+            return temp;
+        }
 	}
 
 	bool LynxStructure::dataChanged()
@@ -574,8 +584,8 @@ namespace LynxLib
 
 		int copySize = _structures[targetIndex].getSize()*_structures[targetIndex].getIndexingSize();
 
-        char* sourcePointer = (char*)(_structures[sourceIndex].getDataPointer());
-		char* targetPointer = (char*)(_structures[targetIndex].getDataPointer());
+        char* sourcePointer = static_cast<char*>(_structures[sourceIndex].getDataPointer());
+        char* targetPointer = static_cast<char*>(_structures[targetIndex].getDataPointer());
 
 		for (int i = 0; i < copySize; i++)
 		{
@@ -622,11 +632,13 @@ namespace LynxLib
 		return this->_structures[index].dataChanged();
 	}
 
-	int LynxHandler::getTranferSize(LynxID _lynxID)
+    int LynxHandler::getTranferSize(LynxID _lynxID, int subIndex)
 	{
 		int index = indexFromID(_lynxID);
+        if(index < 0)
+            return -1;
 
-		return this->_structures[index].getTransferSize();
+        return this->_structures[index].getTransferSize(subIndex);
 	}
 
 	LynxList<LynxID> LynxHandler::getIDs()

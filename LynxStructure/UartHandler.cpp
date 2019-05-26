@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------
-//------------------------------------- Version 1.0.0.1 -------------------------------------
+//------------------------------------- Version 1.0.0.2 -------------------------------------
 //-------------------------------------------------------------------------------------------
 
 #include "UartHandler.h"
@@ -11,6 +11,16 @@ UartHandler::UartHandler()
     {
         _dataBuffer[i] = 0;
     }
+}
+
+UartHandler::UartHandler(LynxLib::LynxHandler* lynxHandler)
+{
+	for (int i = 0; i < DATABUFFER_SIZE; i++)
+	{
+		_dataBuffer[i] = 0;
+	}
+
+	_lynxHandler = lynxHandler;
 }
 
 bool UartHandler::open(int port, int baudRate)
@@ -211,16 +221,66 @@ int UartHandler::bytesAvailable()
     return -1;
 
 }
+
+void UartHandler::onNewData(const LynxLib::LynxID& id)
+{
+	NewData::onNewUartData(id);
+	_newData = false;
+}
+
 #endif //ARDUINO
 
 #ifdef QT_LYNX
 
-UartHandler::UartHandler()
+
+InterruptObject::InterruptObject(UartHandler* handler, QObject* parent) : QObject(parent)
+{
+    _handler = handler;
+}
+
+void InterruptObject::update()
+{
+    if(_handler == nullptr)
+        return;
+
+    _handler->update();
+}
+
+void InterruptObject::newData(const LynxLib::LynxID& id)
+{
+    emit onNewData(id);
+}
+
+UartHandler::UartHandler() :
+    _interruptObject(this)
 {
     for(int i = 0; i < DATABUFFER_SIZE; i++)
     {
         _dataBuffer[i] = 0;
     }
+}
+
+UartHandler::UartHandler(LynxLib::LynxHandler* lynxHandler) :
+    _interruptObject(this)
+{
+    for(int i = 0; i < DATABUFFER_SIZE; i++)
+    {
+        _dataBuffer[i] = 0;
+    }
+
+    QObject::connect(&serialPort, SIGNAL(readyRead()), &_interruptObject, SLOT(update()));
+
+    this->connectToLynx(lynxHandler);
+}
+
+//void UartHandler::connecUpdatetInterrupt(QObject *targetObject)
+//{
+//    QObject::connect(&(this->serialPort), SIGNAL(readyRead()), targetObject, SLOT(updateUart()));
+//}
+
+void UartHandler::connectNewDataInterrupt(QObject* targetObject)
+{
+    QObject::connect(&(this->_interruptObject), SIGNAL(onNewData(const LynxLib::LynxID&)), targetObject, SLOT(onNewData(const LynxLib::LynxID&)));
 }
 
 bool UartHandler::open(int port, int baudRate)
@@ -288,6 +348,11 @@ int UartHandler::write(const char* buffer, int size)
 int UartHandler::bytesAvailable()
 {
     return(int(serialPort.bytesAvailable()));
+}
+
+void UartHandler::onNewData(const LynxLib::LynxID& id)
+{
+    _interruptObject.newData(id);
 }
 
 #endif //QT_LYNX
@@ -422,217 +487,152 @@ int UartHandler::bytesAvailable()
 
 #endif //TI
 
-//void UartHandler::update(LynxStructureSpace::LynxHandler& lynxHandler, const LynxStructureSpace::LynxID& _lynxID)
-//{
-//    if(!_open)
-//        return;
-//
-//    _bytesIn = bytesAvailable();
-//
-//    if(_bytesIn < 0)
-//    {
-//        _errorCounter++;
-//        return;
-//    }
-//
-//    switch (_state)
-//    {
-//    case eIdle:
-//    {
-//        if (_bytesIn > 0)
-//        {
-//            _index = 0;
-//            _state = eScanning;
-//        }
-//
-//        break;
-//    }
-//    case eScanning:
-//    {
-//        if (_bytesIn)
-//        {
-//            switch (_index)
-//            {
-//            case 0:
-//            {
-//                _dataBuffer[_index] = this->read();
-//
-//                if (_dataBuffer[_index] == REMOTE_ID)
-//                    _index++;
-//                else
-//                {
-//                    _state = eIdle;
-//                    _errorCounter++;
-//                }
-//                break;
-//            }
-//            case 1:
-//            {
-//                _dataBuffer[_index] = this->read();
-//
-//                if (_dataBuffer[_index] == _lynxID.structTypeID)
-//                    _index++;
-//                else
-//                {
-//                    _state = eIdle;
-//                    _errorCounter++;
-//                }
-//                break;
-//            }
-//            case 2:
-//            {
-//                _dataBuffer[_index] = this->read();
-//
-//                if (true)//dataBuffer[index] == _lynxID.structInstanceID)
-//                {
-//                    _index++;
-//                    _state = eReading;
-//                }
-//                else
-//                {
-//                    _state = eIdle;
-//                    _errorCounter++;
-//                }
-//                break;
-//            }
-//            default:
-//            {
-//                _state = eIdle;
-//                _errorCounter++;
-//
-//                break;
-//            }
-//            }
-//        }
-//
-//        break;
-//    }
-//    case eReading:
-//    {
-//        if (_bytesIn >= (lynxHandler.getTranferSize(_lynxID) - _index))
-//        {
-//            this->read(&(_dataBuffer[_index]), (lynxHandler.getTranferSize(_lynxID) - _index));
-//            int bytesReceived = lynxHandler.fromBuffer(_dataBuffer);
-//
-//            if(bytesReceived < 0)
-//                _errorCounter++;
-//
-//            _state = eIdle;
-//            _newData = true;
-//        }
-//
-//        break;
-//    }
-//    default:
-//    {
-//        _state = eIdle;
-//        _errorCounter++;
-//        break;
-//    }
-//    }
-//}
-
 bool UartHandler::opened()
 {
     return _open;
 }
 
-void UartHandler::update(LynxLib::LynxHandler& lynxHandler)
+void UartHandler::update(UartHandler* uartHandler)
 {
-    if (!_open)
+    uartHandler->update();
+}
+
+void UartHandler::update()
+{
+    if (!_open || (_lynxHandler == nullptr))
         return;
 
-    _bytesIn = bytesAvailable();
-
-    if (_bytesIn < 0)
+    if (this->bytesAvailable() < 0)
     {
         _errorCounter++;
         return;
     }
 
-    switch (_state)
+
+    if(_state == eIdle)
     {
-    case eIdle:
-    {
-        if (_bytesIn > 0)
+        if (this->bytesAvailable() > 0)
         {
-            // _index = 0;
+            _receivedBytes = 0;
             _state = eScanning;
         }
 
-        break;
-    }
-    case eScanning:
+     }
+
+    if(_state == eScanning)
     {
-        if (_bytesIn > 0)
+        int shuffleCount = 0;
+        do
         {
+            // qDebug() << "while";
             if(_shuffleBytes)
             {
+                shuffleCount++;
                 _dataBuffer[0] = _dataBuffer[1];
                 _dataBuffer[1] = _dataBuffer[2];
-                _dataBuffer[2] = this->read();
+                _dataBuffer[2] = read();
+                _receivedBytes++;
                 _shuffleBytes = false;
             }
             else
             {
-                if(_bytesIn < 3)
-                    break;
+                if(this->bytesAvailable() < LYNX_ID_BYTES)
+                    return;
 
-                this->read(_dataBuffer, 3);
+                _receivedBytes += this->read(_dataBuffer, LYNX_ID_BYTES);
             }
 
             _tempID.deviceID = static_cast<uint8_t>(_dataBuffer[0]);
             _tempID.structTypeID = static_cast<uint8_t>(_dataBuffer[1]);
             _tempID.structInstanceID = static_cast<uint8_t>(_dataBuffer[2]);
 
-            if(!lynxHandler.isMember(_tempID))
+            // qDebug() << (lynxHandler.isMember(_tempID) ? "true" : "false");
+
+            if(!_lynxHandler->isMember(_tempID))
             {
                 _shuffleBytes = true;
                 _errorCounter++;
                 _state = eIdle;
-                break;
+                return;
             }
 
-            _state = eReading;
-            break;
+            _state = eIndexing;
+        }while ((this->bytesAvailable() > 0) && _shuffleBytes);
+
+        // qDebug() << QString::number(shuffleCount);
+    }
+
+    if(_state == eIndexing)
+    {
+        if(this->bytesAvailable() < LYNX_INDEXER_BYTES)
+            return;
+
+        _receivedBytes += this->read(&(_dataBuffer[LYNX_ID_BYTES]), LYNX_INDEXER_BYTES);
+
+        int lynxIndex = (int(_dataBuffer[LYNX_ID_BYTES]) & int(0xFF)) | ((int(_dataBuffer[LYNX_ID_BYTES + 1]) & int(0xFF)) << 8);
+
+        _readSize = _lynxHandler->getTranferSize(_tempID, lynxIndex - 1) - LYNX_ID_BYTES - LYNX_INDEXER_BYTES;
+        if(_readSize <= 0)
+        {
+            _errorCounter++;
+            _state = eIdle;
+            return;
         }
 
-        break;
+        _state = eReading;
     }
-    case eReading:
+
+
+    if(_state == eReading)
     {
 
-        if (_bytesIn >= (lynxHandler.getTranferSize(_tempID) - 3))
+        if (this->bytesAvailable() >= _readSize)
         {
-            this->read(&(_dataBuffer[3]), (lynxHandler.getTranferSize(_tempID) - 3));
-            int bytesReceived = lynxHandler.fromBuffer(_dataBuffer);
-
-            if (bytesReceived < 0)
-                _errorCounter++;
+            _receivedBytes += this->read(&(_dataBuffer[LYNX_ID_BYTES + LYNX_INDEXER_BYTES]), _readSize);
+            int bytesTransferred = _lynxHandler->fromBuffer(_dataBuffer);
 
             _state = eIdle;
-            _newData = true;
-        }
+            if (bytesTransferred < 1)
+            {
+                _errorCounter++;
+                return;
+            }
 
-        break;
-    }
-    default:
-    {
-        _state = eIdle;
-        _errorCounter++;
-        break;
-    }
+            _newData = true;
+            this->onNewData(_tempID);
+        }
     }
 }
 
-int UartHandler::send(LynxLib::LynxHandler & lynxHandler, const LynxLib::LynxID & _lynxID)
+//int UartHandler::send(const LynxLib::LynxID & _lynxID)
+//{
+//    if(!_open || (_lynxHandler == nullptr))
+//        return -1;
+
+//    int size = _lynxHandler->toBuffer(_lynxID, _dataBuffer);
+
+//    return this->write(_dataBuffer, size);
+//}
+
+int UartHandler::send(const LynxLib::LynxID & _lynxID, int subIndex)
 {
-    if(!_open)
+    if(!_open || (_lynxHandler == nullptr))
         return -1;
 
-    int size = lynxHandler.toBuffer(_lynxID, _dataBuffer);
+    int size;
 
-    return this->write(_dataBuffer, size);
+    if(subIndex < 0)
+        size = _lynxHandler->toBuffer(_lynxID, _dataBuffer, LynxLib::eAllVariables);
+    else
+        size = _lynxHandler->toBuffer(_lynxID, _dataBuffer, LynxLib::eSingleVariable, subIndex);
+
+    if(size > 0)
+    {
+        _sentBytes = this->write(_dataBuffer, size);
+        return  _sentBytes;
+    }
+
+    return -1;
 }
 
 bool UartHandler::newData()

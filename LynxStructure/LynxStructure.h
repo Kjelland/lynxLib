@@ -1,10 +1,10 @@
 //-------------------------------------------------------------------------------------------------------------------------------
-//---------------------------------------------------- Version 1.3.0.0 ----------------------------------------------------------
+//---------------------------------------------------- Version 1.3.0.1 ----------------------------------------------------------
 //-------------------------------------------------------------------------------------------------------------------------------
 
 #pragma once
 #include <stdint.h>
-#define LYNX_VERSION { 1, 3, 0, 0 }
+#define LYNX_VERSION { 1, 3, 0, 1 }
 
 #ifndef NULL
 #ifndef TI
@@ -105,13 +105,19 @@ namespace LynxLib
 			deviceID = _deviceID;
 			structTypeID = _structTypeID;
 			structInstanceID = _structInstanceID;
-			// totalLength = _totalLength;
+        }
+
+        bool operator == (const LynxID& other) const
+        {
+            if((this->structTypeID == other.structTypeID) && (this->structInstanceID == other.structInstanceID))
+                return true;
+
+            return false;
         }
 
 		uint8_t deviceID;			// Identifies the current machine
 		uint8_t structTypeID;		// Identifies the type of struct
 		uint8_t structInstanceID;	// Identifies the instance of the struct
-		// int totalLength;
 	};
 
 	struct StructItem
@@ -603,10 +609,10 @@ namespace LynxLib
 
 		int getIndexingSize() { return this->_indexingSize; } // Returns number of bytes per index 
 
-		void* getDataPointer() { return _data; };
+        void* getDataPointer() { return _data; }
 
 		// Returns the total size of the datapackage in bytes
-		int getTransferSize();
+        int getTransferSize(int subIndex = -1);
 
 		bool dataChanged();
 
@@ -633,8 +639,8 @@ namespace LynxLib
 				return -3;
 			}
 
-            T* pDest = (T*)(target);
-            T* pSrc = (T*)(this->_data);
+            T* pDest = static_cast<T*>(target);
+            T* pSrc = static_cast<T*>(this->_data);
 
 			for (int i = 0; i < size; i++)
 			{
@@ -669,8 +675,8 @@ namespace LynxLib
 				return -3;
 			}
 
-			T* pSrc = (T*)(target);
-			T* pDest = (T*)(this->_data);
+            T* pSrc = static_cast<T*>(target);
+            T* pDest = static_cast<T*>(this->_data);
 
 			for (int i = 0; i < size; i++)
 			{
@@ -693,7 +699,7 @@ namespace LynxLib
 
 			this->_dataChanged = false;
 			
-            return *((T*)(_data + offset));
+            return *(reinterpret_cast<T*>(_data + offset));
 
 		}
 
@@ -706,7 +712,7 @@ namespace LynxLib
 				return;
 			}
 
-			T* temp = (T*)(_data + offset);
+            T* temp = reinterpret_cast<T*>(_data + offset);
 
 			*temp = dataIn;
 
@@ -891,7 +897,7 @@ namespace LynxLib
 
 		bool dataChanged(LynxID _lynxID);
 
-		int getTranferSize(LynxID _lynxID);
+        int getTranferSize(LynxID _lynxID, int subIndex = -1);
 
 		LynxList<LynxID> getIDs();
 
