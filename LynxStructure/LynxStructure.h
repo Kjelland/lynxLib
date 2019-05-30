@@ -1,10 +1,10 @@
 //-------------------------------------------------------------------------------------------------------------------------------
-//---------------------------------------------------- Version 1.3.0.1 ----------------------------------------------------------
+//---------------------------------------------------- Version 1.3.1.0 ----------------------------------------------------------
 //-------------------------------------------------------------------------------------------------------------------------------
 
 #pragma once
 #include <stdint.h>
-#define LYNX_VERSION { 1, 3, 0, 1 }
+#define LYNX_VERSION { 1, 3, 1, 0 }
 
 #ifndef NULL
 #ifndef TI
@@ -18,6 +18,7 @@
 #include "DSP28x_Project.h"
 typedef int16_t int8_t;
 #endif //TI
+
 
 #define LYNX_INTERNAL_DATAGRAM char(255)
 
@@ -812,7 +813,7 @@ namespace LynxLib
 
 		int scanRequest(char* dataBuffer);
 
-		int copyData(LynxID source, LynxID target);
+		int copyData(LynxID source, LynxID target, int index = -1);
 
 		template <class T>
 		int copyDataToTarget(LynxID _lynxID, void* target, int size = 0)

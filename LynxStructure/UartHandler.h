@@ -1,11 +1,23 @@
 //-------------------------------------------------------------------------------------------
-//------------------------------------- Version 1.0.0.2 -------------------------------------
+//------------------------------------- Version 1.0.1.0 -------------------------------------
 //-------------------------------------------------------------------------------------------
 
 #pragma once
+
+#ifndef NULL
+#ifdef TI
+#define NULL 0
+#else
+#define NULL nullptr
+#endif // !TI
+#endif // !NULL
+
 #include "LynxStructure.h"
 
 #define QT_LYNX
+#ifdef TI
+#undef QT_LYNX
+#endif // TI
 
 #ifdef ARDUINO
 #undef QT_LYNX
@@ -14,14 +26,14 @@
 class NewData
 {
 public:
-	static void onNewUartData(const LynxLib::LynxID& id);
+	static void onNewUartData(const LynxLib::LynxID& id, int index);
 };
 #endif //ARDUINO
 
 #ifdef QT_LYNX
 #include <QtSerialPort/QSerialPort>
 #include <QtSerialPort/QSerialPortInfo>
-#include <QDebug>
+// #include <QDebug>
 
 class UartHandler;
 
@@ -29,14 +41,14 @@ class InterruptObject : public QObject
 {
     Q_OBJECT
 
-    UartHandler* _handler = nullptr;
+    UartHandler* _handler = NULL;
 
 public:
-    explicit InterruptObject(UartHandler* handler, QObject* parent = nullptr);
-    void newData(const LynxLib::LynxID& id);
+    explicit InterruptObject(UartHandler* handler, QObject* parent = NULL);
+    void newData(const LynxLib::LynxID& id, int index);
 
 signals:
-    void onNewData(const LynxLib::LynxID& id);
+    void onNewData(const LynxLib::LynxID& id, int index);
 
 public slots:
     void update();
@@ -56,7 +68,7 @@ public slots:
 
 // #include "RingBuffer.h"
 
-#define DATABUFFER_SIZE 32
+#define DATABUFFER_SIZE 100
 #define REMOTE_ID 2
 
 // #define LYNX_DEBUG
@@ -101,7 +113,7 @@ public:
     bool newData();
 
     // Triggered when new data is received
-    void onNewData(const LynxLib::LynxID& id);
+    void onNewData(const LynxLib::LynxID& id, int index);
 
     // returns one character from the buffer at "index"
     char bufferAt(int index);
@@ -140,6 +152,7 @@ private:
     // int _index = 0;
     bool _open = false;
     LynxLib::LynxID _tempID;
+    int _lynxIndex;
     // bool _devicePairing = false;
     bool _shuffleBytes = false;
 
@@ -152,7 +165,7 @@ private:
 
 	LynxLib::LynxList<LynxLib::LynxID> _idList;
 
-    LynxLib::LynxHandler* _lynxHandler = nullptr;
+    LynxLib::LynxHandler* _lynxHandler = NULL;
 
 #ifdef QT_LYNX
 public:
@@ -161,7 +174,7 @@ public:
     // void onNewData(BackEnd* target);
     void connectNewDataInterrupt(QObject* targetObject);
 private:
-    // BackEnd* _backEnd = nullptr;
+    // BackEnd* _backEnd = NULL;
     QSerialPort serialPort;
 
     InterruptObject _interruptObject;

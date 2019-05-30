@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------
-//------------------------------------- Version 1.0.0.2 -------------------------------------
+//------------------------------------- Version 1.0.1.0 -------------------------------------
 //-------------------------------------------------------------------------------------------
 
 #include "UartHandler.h"
@@ -222,9 +222,9 @@ int UartHandler::bytesAvailable()
 
 }
 
-void UartHandler::onNewData(const LynxLib::LynxID& id)
+void UartHandler::onNewData(const LynxLib::LynxID& id, int index)
 {
-	NewData::onNewUartData(id);
+	NewData::onNewUartData(id, index);
 	_newData = false;
 }
 
@@ -246,9 +246,9 @@ void InterruptObject::update()
     _handler->update();
 }
 
-void InterruptObject::newData(const LynxLib::LynxID& id)
+void InterruptObject::newData(const LynxLib::LynxID& id, int index)
 {
-    emit onNewData(id);
+    emit onNewData(id, index);
 }
 
 UartHandler::UartHandler() :
@@ -280,7 +280,7 @@ UartHandler::UartHandler(LynxLib::LynxHandler* lynxHandler) :
 
 void UartHandler::connectNewDataInterrupt(QObject* targetObject)
 {
-    QObject::connect(&(this->_interruptObject), SIGNAL(onNewData(const LynxLib::LynxID&)), targetObject, SLOT(onNewData(const LynxLib::LynxID&)));
+    QObject::connect(&(this->_interruptObject), SIGNAL(onNewData(const LynxLib::LynxID&, int)), targetObject, SLOT(onNewData(const LynxLib::LynxID&, int)));
 }
 
 bool UartHandler::open(int port, int baudRate)
@@ -342,6 +342,7 @@ int UartHandler::read(char* buffer, int size)
 
 int UartHandler::write(const char* buffer, int size)
 {
+    // qDebug() << "Bytes to write: " << size;
     return(int(serialPort.write(buffer, size)));
 }
 
@@ -350,9 +351,9 @@ int UartHandler::bytesAvailable()
     return(int(serialPort.bytesAvailable()));
 }
 
-void UartHandler::onNewData(const LynxLib::LynxID& id)
+void UartHandler::onNewData(const LynxLib::LynxID& id, int index)
 {
-    _interruptObject.newData(id);
+    _interruptObject.newData(id, index);
 }
 
 #endif //QT_LYNX
@@ -497,10 +498,21 @@ void UartHandler::update(UartHandler* uartHandler)
     uartHandler->update();
 }
 
+// int iteration = 0;
+
 void UartHandler::update()
 {
+//    iteration++;
+//    qDebug() << "iteration: " << iteration;
+
+//    qDebug() << "state: " << _state;
+
     if (!_open || (_lynxHandler == nullptr))
+    {
+//        qDebug() << "lynxHandler: " << _lynxHandler;
+//        qDebug() << "open: " << _open;
         return;
+    }
 
     if (this->bytesAvailable() < 0)
     {
@@ -508,6 +520,7 @@ void UartHandler::update()
         return;
     }
 
+//    qDebug() << "state: " << _state;
 
     if(_state == eIdle)
     {
@@ -518,6 +531,8 @@ void UartHandler::update()
         }
 
      }
+
+//    qDebug() << "state: " << _state;
 
     if(_state == eScanning)
     {
@@ -562,6 +577,8 @@ void UartHandler::update()
         // qDebug() << QString::number(shuffleCount);
     }
 
+//    qDebug() << "state: " << _state;
+
     if(_state == eIndexing)
     {
         if(this->bytesAvailable() < LYNX_INDEXER_BYTES)
@@ -569,9 +586,10 @@ void UartHandler::update()
 
         _receivedBytes += this->read(&(_dataBuffer[LYNX_ID_BYTES]), LYNX_INDEXER_BYTES);
 
-        int lynxIndex = (int(_dataBuffer[LYNX_ID_BYTES]) & int(0xFF)) | ((int(_dataBuffer[LYNX_ID_BYTES + 1]) & int(0xFF)) << 8);
+        _lynxIndex = (int(_dataBuffer[LYNX_ID_BYTES]) & int(0xFF)) | ((int(_dataBuffer[LYNX_ID_BYTES + 1]) & int(0xFF)) << 8);
 
-        _readSize = _lynxHandler->getTranferSize(_tempID, lynxIndex - 1) - LYNX_ID_BYTES - LYNX_INDEXER_BYTES;
+        _readSize = _lynxHandler->getTranferSize(_tempID, _lynxIndex - 1) - LYNX_ID_BYTES - LYNX_INDEXER_BYTES;
+
         if(_readSize <= 0)
         {
             _errorCounter++;
@@ -582,6 +600,7 @@ void UartHandler::update()
         _state = eReading;
     }
 
+//    qDebug() << "state: " << _state;
 
     if(_state == eReading)
     {
@@ -599,9 +618,11 @@ void UartHandler::update()
             }
 
             _newData = true;
-            this->onNewData(_tempID);
+            this->onNewData(_tempID, (_lynxIndex - 1));
         }
     }
+
+//    qDebug() << "state: " << _state;
 }
 
 //int UartHandler::send(const LynxLib::LynxID & _lynxID)
@@ -616,6 +637,8 @@ void UartHandler::update()
 
 int UartHandler::send(const LynxLib::LynxID & _lynxID, int subIndex)
 {
+//    qDebug() << "open begin send: " << _open;
+
     if(!_open || (_lynxHandler == nullptr))
         return -1;
 
@@ -629,9 +652,12 @@ int UartHandler::send(const LynxLib::LynxID & _lynxID, int subIndex)
     if(size > 0)
     {
         _sentBytes = this->write(_dataBuffer, size);
+
+//        qDebug() << "open end send success: " << _open;
         return  _sentBytes;
     }
 
+//    qDebug() << "open end send failure: " << _open;
     return -1;
 }
 

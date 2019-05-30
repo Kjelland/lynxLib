@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------------------------------------------
-//---------------------------------------------------- Version 1.3.0.1 ----------------------------------------------------------
+//---------------------------------------------------- Version 1.3.1.0 ----------------------------------------------------------
 //-------------------------------------------------------------------------------------------------------------------------------
 
 #include"LynxStructure.h"
@@ -133,7 +133,7 @@ namespace LynxLib
 
 	int LynxStructure::fromBuffer(const char *dataBuffer)
 	{
-		int lynxIndex = (int(dataBuffer[LYNX_ID_BYTES]) & int(0xFF)) | ((int(dataBuffer[LYNX_ID_BYTES + 1]) & int(0xFF)) << 8);
+        int lynxIndex = (int(dataBuffer[LYNX_ID_BYTES]) & int(0xFF)) | ((int(dataBuffer[LYNX_ID_BYTES + 1]) & int(0xFF)) << 8);
 
 		int index = LYNX_ID_BYTES + LYNX_INDEXER_BYTES;
 
@@ -151,9 +151,10 @@ namespace LynxLib
 				localChecksum += dataBuffer[i];
 			}
 
-			if (localChecksum != remoteChecksum)
+            if ((localChecksum & 0xff) != (remoteChecksum & 0xff))
 			{
-				return -2; // Return error code -2 if checksum is wrong
+                // qDebug() << "checksum error";
+                return -5; // Return error code -5 if checksum is wrong
 			}
 
 			// Copy data
@@ -168,6 +169,8 @@ namespace LynxLib
 		}
 		else if (lynxIndex > 0) // Copy specific item
 		{
+            lynxIndex--;
+
 			if (lynxIndex > this->_structDefinition->size)
 			{
 				return -1;
@@ -176,7 +179,7 @@ namespace LynxLib
 			// Check data
 			int transferSize = checkTransferSize(_structDefinition->structItems[lynxIndex].dataType);
 			
-			char remoteChecksum = dataBuffer[index + transferSize];
+            char remoteChecksum = dataBuffer[index + transferSize];
 			char localChecksum = 0;
 
 			for (int i = 0; i < (index + transferSize); i++)
@@ -184,13 +187,13 @@ namespace LynxLib
 				localChecksum += dataBuffer[i];
 			}
 
-			if (localChecksum != remoteChecksum)
+            if ((localChecksum & 0xff) != (remoteChecksum & 0xff))
 			{
-				return -2; // Return error code -2 if checksum is wrong
+                return -5; // Return error code -5 if checksum is wrong
 			}
 
 
-			tempSize = writeVarFromBuffer(dataBuffer, index, lynxIndex - 1);
+            tempSize = writeVarFromBuffer(dataBuffer, index, lynxIndex);
 			if (tempSize > 0)
 				index += tempSize;
 			else
@@ -210,7 +213,7 @@ namespace LynxLib
 		}
 	}
 
-	// Returns the size of the datapackage in bytes (not including identifiers and checksum)
+	// Returns the size of the datapackage in bytes (including identifiers and checksum)
     int LynxStructure::getTransferSize(int subIndex)
 	{
         if(subIndex < 0)
@@ -440,7 +443,7 @@ namespace LynxLib
 		case 8:
 		{
 			uint64_t temp = 0;
-			for (int n = 0; n < 4; n++)
+            for (int n = 0; n < 8; n++)
 			{
 				temp |= ((uint64_t(dataBuffer[index]) << (n * 8)) & (uint64_t(0xFF) << (n * 8)));
 				index++;
@@ -569,7 +572,7 @@ namespace LynxLib
 		return index;
 	}
 
-	int LynxHandler::copyData(LynxID source, LynxID target)
+	int LynxHandler::copyData(LynxID source, LynxID target, int index)
 	{
 		if (source.structTypeID != target.structTypeID)
 			return -2;
@@ -582,14 +585,55 @@ namespace LynxLib
 		if (targetIndex < 0)
 			return -1;
 
-		int copySize = _structures[targetIndex].getSize()*_structures[targetIndex].getIndexingSize();
-
-        char* sourcePointer = static_cast<char*>(_structures[sourceIndex].getDataPointer());
-        char* targetPointer = static_cast<char*>(_structures[targetIndex].getDataPointer());
-
-		for (int i = 0; i < copySize; i++)
+		if (index < 0)
 		{
-			targetPointer[i] = sourcePointer[i];
+			int copySize = _structures[targetIndex].getSize()*_structures[targetIndex].getIndexingSize();
+
+			char* sourcePointer = static_cast<char*>(_structures[sourceIndex].getDataPointer());
+			char* targetPointer = static_cast<char*>(_structures[targetIndex].getDataPointer());
+
+			for (int i = 0; i < copySize; i++)
+			{
+				targetPointer[i] = sourcePointer[i];
+			}
+		}
+		else
+		{
+			switch (_structures[sourceIndex].structDefinition()->structItems[index].dataType)
+			{
+			case LynxLib::eInt8:
+				_structures[targetIndex].setData(index, _structures[sourceIndex].getData<int8_t>(index));
+				break;
+			case LynxLib::eUint8:
+				_structures[targetIndex].setData(index, _structures[sourceIndex].getData<uint8_t>(index));
+				break;
+			case LynxLib::eInt16:
+				_structures[targetIndex].setData(index, _structures[sourceIndex].getData<int16_t>(index));
+				break;
+			case LynxLib::eUint16:
+				_structures[targetIndex].setData(index, _structures[sourceIndex].getData<uint16_t>(index));
+				break;
+			case LynxLib::eInt32:
+				_structures[targetIndex].setData(index, _structures[sourceIndex].getData<int32_t>(index));
+				break;
+			case LynxLib::eUint32:
+				_structures[targetIndex].setData(index, _structures[sourceIndex].getData<uint32_t>(index));
+				break;
+			case LynxLib::eInt64:
+				_structures[targetIndex].setData(index, _structures[sourceIndex].getData<int64_t>(index));
+				break;
+			case LynxLib::eUint64:
+				_structures[targetIndex].setData(index, _structures[sourceIndex].getData<uint64_t>(index));
+				break;
+			case LynxLib::eFloat:
+				_structures[targetIndex].setData(index, _structures[sourceIndex].getData<float>(index));
+				break;
+			case LynxLib::eDouble:
+				_structures[targetIndex].setData(index, _structures[sourceIndex].getData<double>(index));
+				break;
+			default:
+				return -1;
+			}
 		}
 
 		return 0;
