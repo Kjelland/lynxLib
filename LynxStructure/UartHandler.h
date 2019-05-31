@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------
-//------------------------------------- Version 1.0.1.0 -------------------------------------
+//------------------------------------- Version 1.0.1.1 -------------------------------------
 //-------------------------------------------------------------------------------------------
 
 #pragma once
@@ -17,6 +17,7 @@
 #define QT_LYNX
 #ifdef TI
 #undef QT_LYNX
+
 #endif // TI
 
 #ifdef ARDUINO
@@ -59,9 +60,15 @@ public slots:
 #ifdef TI
 // TODO MAGNUS
 // Write here if you need includes
+#define nullptr 0
 #include "DSP28x_Project.h"
 #include   "f2802x_common/include/sci.h"
 #include   "f2802x_common/include/clk.h"
+class NewData
+{
+public:
+    static void onNewUartData(const LynxLib::LynxID& id,int index);
+};
 #endif // TI
 
 

@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------
-//------------------------------------- Version 1.0.1.0 -------------------------------------
+//------------------------------------- Version 1.0.1.1 -------------------------------------
 //-------------------------------------------------------------------------------------------
 
 #include "UartHandler.h"
@@ -300,7 +300,7 @@ bool UartHandler::open(int port, int baudRate)
         return false;
 
     _open = true;
-
+    serialPort.flush();
     return true;
 }
 
@@ -359,7 +359,12 @@ void UartHandler::onNewData(const LynxLib::LynxID& id, int index)
 #endif //QT_LYNX
 
 #ifdef TI
+void UartHandler::onNewData(const LynxLib::LynxID &id,int index)
+{
 
+    NewData::onNewUartData(id,index);
+
+}
 UartHandler::UartHandler()
 {
     // TODO MAGNUS
