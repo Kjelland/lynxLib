@@ -73,12 +73,208 @@ namespace LynxLib
 		eRqStructInfo
 	};
 
+
 //	enum SendMode
 //	{
 //		eAllVariables = 0,
 //		eSingleVariable,
 //		eSendModeEndOfList
 //	};
+
+    //---------------------------------------------------------------------------------------------------------------------------
+    //---------------------------------------------------- LynxList -------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------------
+
+    template <class T>
+    class LynxList
+    {
+    public:
+        LynxList()
+        {
+            _list = NULL;
+            _count = 0;
+            _reservedSize = 0;
+        }
+
+        LynxList(int size)
+        {
+            _list = NULL;
+            this->reserve(size);
+        }
+
+        LynxList(const LynxList<T>& list)
+        {
+            _list = NULL;
+            *this = list;
+        }
+
+        LynxList(const T* source, int size)
+        {
+            _list = NULL;
+            _count = 0;
+            _reservedSize = 0;
+
+            this->append(source, size);
+        }
+
+        ~LynxList()
+        {
+            if (_list != NULL)
+            {
+                delete[] _list;
+                _list = NULL;
+            }
+        }
+
+        LynxList<T>& operator = (const LynxList<T>& list)
+        {
+            this->clear();
+            this->append(list);
+
+            return *this;
+        }
+
+        T& operator [] (int index) { return _list[index]; }
+
+        // Returns a const safe reference to member at index
+        const T& at(int index) const { return _list[index]; }
+
+        // Destructive reserve. Allocates new memory, and deletes all data.
+        // Will shrink if size is less than reserved size.
+        void reserve(int size)
+        {
+            if (_list != NULL)
+            {
+                delete[] _list;
+                _list = NULL;
+            }
+
+            _count = 0;
+            _reservedSize = size;
+            _list = new T[size];
+        }
+
+        // Non-destructive reserve. Allocates new memory and copies "copysize" number of old data.
+        // Copies all old data if "copySize" is negative or not in argument list.
+        // Will not shrink if size is less than reserved size!
+        void reserveAndCopy(int size, int copySize = -1)
+        {
+            if(_reservedSize >= size)
+                return;
+
+            _reservedSize = size;
+
+            if (_list != NULL)
+            {
+                T* temp = _list;
+                _list = new T[_reservedSize];
+
+                if (copySize >= 0)
+                    _count = copySize;
+
+                // _count = _count < _reservedSize ? _count : _reservedSize;
+                for (int i = 0; i < _count; i++)
+                {
+                    _list[i] = temp[i];
+                }
+
+                delete[] temp;
+                temp = NULL;
+            }
+            else
+            {
+                _count = 0;
+                _list = new T[_reservedSize];
+            }
+
+        }
+
+        // Adds a new item at the end of the list and populates it with "item".
+        void append(const T& item)
+        {
+            if (_count >= _reservedSize)
+                this->reserveAndCopy(_count + 1);
+
+            _list[_count] = item;
+            _count++;
+        }
+
+        // Adds a new empty instance at the end of the list.
+        void append() { this->append(T()); }
+
+        // Appends list at the end of the current list, expands allocated memory if neccessary
+        void append(const LynxList<T>& list)
+        {
+            if ((list.count() + _count) > _reservedSize)
+                this->reserveAndCopy(list.count() + _count);
+
+            for (int i = 0; i < list.count(); i++)
+            {
+                this->append(list.at(i));
+            }
+        }
+
+        // Appends array at the end of the current list, expands allocated memory if neccessary
+        void append(const T* source, int size)
+        {
+            if ((_count + size) > _reservedSize)
+                this->reserveAndCopy(_count + size, _count);
+
+            for (int i = 0; i < size; i++)
+            {
+                this->append(source[i]);
+            }
+        }
+
+
+        // Removes the indexed item and shifts the remaining items to fill
+        // Returns number of remaining items if successful, -1 if failed
+        int remove(int index)
+        {
+            if (index < this->_count)
+            {
+                _count--;
+                if (_count <= 0)
+                {
+                    return this->_count;
+                }
+
+                for (int i = index; i < _count; i++)
+                {
+                    _list[i] = _list[i + 1];
+                }
+                return this->_count;
+            }
+
+            return -1;
+        }
+
+        // Clears the list and frees the allocated memory
+        void deleteList()
+        {
+            _count = 0;
+            _reservedSize = 0;
+            if (_list != NULL)
+            {
+                delete[] _list;
+                _list = NULL;
+            }
+        }
+
+        // Clears the list but does not free allocated memory
+        void clear() { _count = 0; }
+
+        // Returns number of elements in list
+        int count() const { return _count; }
+
+        int reservedSize() const { return _reservedSize; }
+
+    private:
+        T* _list;
+
+        int _count;
+        int _reservedSize;
+    };
 
 	//---------------------------------------------------------------------------------------------------------------------------
 	//--------------------------------------------------- Structures ------------------------------------------------------------
@@ -358,6 +554,19 @@ namespace LynxLib
 			return size;
 		}
 
+        int read(LynxLib::LynxList<char>& target)
+        {
+            target.append(this->_buffer, this->count());
+
+            for (int i = 0; i < this->count(); i++)
+            {
+                _count--;
+                _readIndex++;
+                if (_readIndex >= _reservedSize)
+                    _readIndex = 0;
+            }
+        }
+
 		// Writes one element "source" to the buffer
 		// Overflow allowed:
 		//		Returns true if the buffer is overflowing (data will be overwritten), otherwise false
@@ -420,200 +629,7 @@ namespace LynxLib
 		E_RingBufferMode _overflowMode;
 	}; 
 
-	//---------------------------------------------------------------------------------------------------------------------------
-	//---------------------------------------------------- LynxList -------------------------------------------------------------
-	//---------------------------------------------------------------------------------------------------------------------------
 
-	template <class T>
-	class LynxList
-	{
-	public:
-		LynxList()
-		{
-			_list = NULL;
-			_count = 0;
-			_reservedSize = 0;
-		}
-
-		LynxList(int size)
-		{
-			_list = NULL;
-			this->reserve(size);
-		}
-
-		LynxList(const LynxList<T>& list)
-		{
-			_list = NULL;
-			*this = list;
-		}
-
-		LynxList(const T* source, int size)
-		{
-			_list = NULL;
-			_count = 0;
-			_reservedSize = 0;
-
-			this->append(source, size);
-		}
-
-		~LynxList()
-		{
-			if (_list != NULL)
-			{
-				delete[] _list;
-				_list = NULL;
-			}
-		}
-
-		LynxList<T>& operator = (const LynxList<T>& list)
-		{
-			this->clear();
-			this->append(list);
-
-			return *this;
-		}
-
-		T& operator [] (int index) { return _list[index]; }
-
-        // Returns a const safe reference to member at index
-        const T& at(int index) const { return _list[index]; }
-
-		// Destructive reserve. Allocates new memory, and deletes all data.
-        // Will shrink if size is less than reserved size.
-		void reserve(int size)
-		{
-			if (_list != NULL)
-			{
-				delete[] _list;
-				_list = NULL;
-			}
-
-			_count = 0;
-			_reservedSize = size;
-			_list = new T[size];
-		}
-
-		// Non-destructive reserve. Allocates new memory and copies "copysize" number of old data.
-        // Copies all old data if "copySize" is negative or not in argument list.
-        // Will not shrink if size is less than reserved size!
-		void reserveAndCopy(int size, int copySize = -1)
-		{
-            if(_reservedSize >= size)
-                return;
-
-			_reservedSize = size;
-
-			if (_list != NULL)
-			{
-				T* temp = _list;
-				_list = new T[_reservedSize];
-
-				if (copySize >= 0)
-					_count = copySize;
-
-                // _count = _count < _reservedSize ? _count : _reservedSize;
-				for (int i = 0; i < _count; i++)
-				{
-					_list[i] = temp[i];
-				}
-
-				delete[] temp;
-				temp = NULL;
-			}
-			else
-			{
-				_count = 0;
-				_list = new T[_reservedSize];
-			}
-
-		}
-
-		// Adds a new item at the end of the list and populates it with "item".
-		void append(const T& item)
-		{
-			if (_count >= _reservedSize)
-				this->reserveAndCopy(_count + 1);
-
-			_list[_count] = item;
-			_count++;
-		}
-
-		// Adds a new empty instance at the end of the list.
-		void append() { this->append(T()); }
-
-		// Appends list at the end of the current list, expands allocated memory if neccessary
-		void append(const LynxList<T>& list)
-		{
-			if ((list.count() + _count) > _reservedSize)
-				this->reserveAndCopy(list.count() + _count);
-
-			for (int i = 0; i < list.count(); i++)
-			{
-				this->append(list.at(i));
-			}
-		}
-
-		// Appends array at the end of the current list, expands allocated memory if neccessary
-		void append(const T* source, int size)
-		{
-			if ((_count + size) > _reservedSize)
-				this->reserveAndCopy(_count + size, _count);
-
-			for (int i = 0; i < size; i++)
-			{
-				this->append(source[i]);
-			}
-		}
-
-
-		// Removes the indexed item and shifts the remaining items to fill
-		// Returns number of remaining items if successful, -1 if failed
-		int remove(int index)
-		{
-			if (index < this->_count)
-			{
-				_count--;
-				if (_count <= 0)
-				{
-					return this->_count;
-				}
-
-				for (int i = index; i < _count; i++)
-				{
-					_list[i] = _list[i + 1];
-				}
-				return this->_count;
-			}
-
-			return -1;
-		}
-
-		// Clears the list and frees the allocated memory
-		void deleteList()
-		{
-			_count = 0;
-			_reservedSize = 0;
-			if (_list != NULL)
-			{
-				delete[] _list;
-				_list = NULL;
-			}
-		}
-
-		// Clears the list but does not free allocated memory
-		void clear() { _count = 0; }
-
-		// Returns number of elements in list
-		int count() const { return _count; }
-
-        int reservedSize() const { return _reservedSize; }
-
-	private:
-		T* _list;
-
-		int _count;
-		int _reservedSize;
-	};
 	
 	//---------------------------------------------------------------------------------------------------------------------------
 	//------------------------------------------------ LynxStructure ------------------------------------------------------------
