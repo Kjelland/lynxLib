@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------
-//------------------------------------- Version 1.0.1.1 -------------------------------------
+//------------------------------------- Version 1.0.1.2-------------------------------------
 //-------------------------------------------------------------------------------------------
 
 #pragma once
@@ -75,7 +75,7 @@ public:
 
 // #include "RingBuffer.h"
 
-#define DATABUFFER_SIZE 100
+// #define DATABUFFER_SIZE 100
 #define REMOTE_ID 2
 
 // #define LYNX_DEBUG
@@ -122,8 +122,8 @@ public:
     // Triggered when new data is received
     void onNewData(const LynxLib::LynxID& id, int index);
 
-    // returns one character from the buffer at "index"
-    char bufferAt(int index);
+//    // returns one character from the buffer at "index"
+//    char bufferAt(int index);
 
     // Returns number of communication errors since strtup
     int errorCount() { return _errorCounter; }
@@ -137,15 +137,22 @@ public:
     // Returns how many bytes were sent in the last datagram, resets to 0 when read;
     int bytesWritten() { int temp = _sentBytes; _sentBytes = 0; return temp; }
 
+    // Flushes the internal databuffer
+    void flush();
+
+//    int bufferCount() { return _dataBuffer.count(); }
+
+//    int reservedBuffer() { return _dataBuffer.reservedSize(); }
+
 private:
     // Reads a single character from serial and returns it
     char read();
 
     // Reads "size" bytes from the serial port, and puts it in buffer
-    int read(char* buffer, int size);
+    int read(LynxLib::LynxList<char>& buffer, int size);
 
-    // Writes "size" number of bytes from buffer to the serial port
-    int write(const char* buffer, int size);
+    // Writes the buffer to the serial port
+    int write(const LynxLib::LynxList<char>& buffer);
 
     // Returns number of bytes on port
     int bytesAvailable();
@@ -154,17 +161,15 @@ private:
     bool _newData = false;
     int _errorCounter = 0;
     int _port;
-    // int _bytesIn = 0;
-    char _dataBuffer[DATABUFFER_SIZE];
-    // int _index = 0;
+    LynxLib::LynxList<char> _readBuffer;
+    LynxLib::LynxList<char> _writeBuffer;
+
     bool _open = false;
     LynxLib::LynxID _tempID;
     int _lynxIndex;
-    // bool _devicePairing = false;
     bool _shuffleBytes = false;
 
     int _transferBytes = 0;
-    // int _lynxIndex;
     int _readSize = 0;
 
     int _receivedBytes = 0;
