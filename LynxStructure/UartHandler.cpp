@@ -15,12 +15,12 @@ UartHandler::UartHandler()
 
 UartHandler::UartHandler(LynxLib::LynxHandler* lynxHandler)
 {
-	for (int i = 0; i < DATABUFFER_SIZE; i++)
-	{
-		_dataBuffer[i] = 0;
-	}
+    for (int i = 0; i < DATABUFFER_SIZE; i++)
+    {
+        _dataBuffer[i] = 0;
+    }
 
-	_lynxHandler = lynxHandler;
+    _lynxHandler = lynxHandler;
 }
 
 bool UartHandler::open(int port, int baudRate)
@@ -226,8 +226,8 @@ int UartHandler::bytesAvailable()
 
 void UartHandler::onNewData(const LynxLib::LynxID& id, int index)
 {
-	NewData::onNewUartData(id, index);
-	_newData = false;
+    NewData::onNewUartData(id, index);
+    _newData = false;
 }
 
 void UartHandler::flush()
@@ -403,10 +403,10 @@ UartHandler::UartHandler()
     // Write here if you need something in the constructor
 
     // Clear buffer
-    for(int i = 0; i < DATABUFFER_SIZE; i++)
-    {
-        _dataBuffer[i] = 0;
-    }
+//    for(int i = 0; i < DATABUFFER_SIZE; i++)
+//    {
+//        _dataBuffer[i] = 0;
+//    }
     rxBuffer.init(DATABUFFER_SIZE);
     txBuffer.init(DATABUFFER_SIZE);
 }
@@ -445,7 +445,8 @@ bool UartHandler::open(int port, int baudRate)
     //SCI_enableLoopBack(sciHandle);
 
     // SCI BRR = LSPCLK/(SCI BAUDx8) - 1
-    SCI_setBaudRate(sciHandle, SCI_BaudRate_9_6_kBaud);
+
+    SCI_setBaudRate(sciHandle, SCI_BaudRate_e(baudRate));
 
     SCI_enable(sciHandle);
     //
@@ -491,7 +492,7 @@ char UartHandler::read()
     return rxBuffer.read();
 }
 
-int UartHandler::read(char* buffer, int size)
+int UartHandler::read(LynxLib::LynxList<char>& buffer, int size)
 {
     // TODO MAGNUS
     // Read "size" number of bytes from the serial port and put them in "buffer".
@@ -501,7 +502,8 @@ int UartHandler::read(char* buffer, int size)
     return rxBuffer.read(buffer,size);
 }
 
-int UartHandler::write(const char* buffer, int size)
+//int UartHandler::write(const char* buffer, int size)
+int UartHandler::write(const LynxLib::LynxList<char>& buffer)
 {
     // TODO MAGNUS
     // Write "size" number of bytes from "buffer" to the serial port.
@@ -510,9 +512,10 @@ int UartHandler::write(const char* buffer, int size)
     if(!_open)
            return -1;
 
-        txBuffer.write(buffer, size);
+        txBuffer.write(&buffer.at(0), buffer.count());
 
     return true;
+    //return(int(serialPort.write(&(buffer.at(0)), buffer.count())));
 }
 
 int UartHandler::bytesAvailable()
@@ -554,6 +557,7 @@ void UartHandler::update()
     if (this->bytesAvailable() < 0)
     {
         _errorCounter++;
+        _errorCode = 10; // error in bytes available
         return;
     }
 
@@ -576,7 +580,7 @@ void UartHandler::update()
             if(_shuffleBytes)
             {
                 shuffleCount++;
-                _readBuffer[0] = _readBuffer.at(0);
+                _readBuffer[0] = _readBuffer.at(1);
                 _readBuffer[1] = _readBuffer.at(2);
                 _readBuffer[2] = read();
                 _receivedBytes++;
@@ -598,6 +602,7 @@ void UartHandler::update()
             {
                 _shuffleBytes = true;
                 _errorCounter++;
+                _errorCode = 11; // no matcing datagram
                 _state = eIdle;
                 return;
             }
@@ -614,12 +619,13 @@ void UartHandler::update()
         _receivedBytes += this->read(_readBuffer, LYNX_INDEXER_BYTES);
 
         _lynxIndex = (int(_readBuffer.at(LYNX_ID_BYTES)) & int(0xFF)) | ((int(_readBuffer.at(LYNX_ID_BYTES + 1)) & int(0xFF)) << 8);
-
+        //_lynxIndex = 11;
         _readSize = _lynxHandler->getTranferSize(_tempID, _lynxIndex - 1) - LYNX_ID_BYTES - LYNX_INDEXER_BYTES;
 
         if(_readSize <= 0)
         {
             _errorCounter++;
+            _errorCode = _readSize; // error uart read
             _state = eIdle;
             return;
         }
@@ -633,12 +639,13 @@ void UartHandler::update()
         if (this->bytesAvailable() >= _readSize)
         {
             _receivedBytes += this->read(_readBuffer, _readSize);
-            int bytesTransferred = _lynxHandler->fromBuffer(_readBuffer);
+            _bytesTransferred = _lynxHandler->fromBuffer(_readBuffer);
 
             _state = eIdle;
-            if (bytesTransferred < 1)
+            if (_bytesTransferred < 1)
             {
                 _errorCounter++;
+                _errorCode = _bytesTransferred; // error in bytes available
                 return;
             }
 

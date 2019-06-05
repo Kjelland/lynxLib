@@ -31,47 +31,47 @@ typedef int16_t int8_t;
 
 namespace LynxLib
 {
-	//---------------------------------------------------------------------------------------------------------------------------
-	//----------------------------------------------------- Enums ---------------------------------------------------------------
-	//---------------------------------------------------------------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------------
+    //----------------------------------------------------- Enums ---------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------------
 
-	enum LynxDataType
-	{
-		eEndOfList = 0,
-		eNoStorage,
-		eInt8,
-		eUint8,
-		eInt16,
-		eUint16,
-		eInt32,
-		eUint32,
-		eInt64,
-		eUint64,
-		eFloat,
-		eDouble,
-		eIQ
-	};
+    enum LynxDataType
+    {
+        eEndOfList = 0,
+        eNoStorage,
+        eInt8,
+        eUint8,
+        eInt16,
+        eUint16,
+        eInt32,
+        eUint32,
+        eInt64,
+        eUint64,
+        eFloat,
+        eDouble,
+        eIQ
+    };
 
-	enum LynxStructMode
-	{
-		eStructureMode = 1,
-		eArrayMode
-	};
+    enum LynxStructMode
+    {
+        eStructureMode = 1,
+        eArrayMode
+    };
 
-	enum StandardStructIDs
-	{
-		eSsInvalidID = 0,
-		eLynxRequest,
-		eLynxResponse,
-		eSsEndOfList
-	};
+    enum StandardStructIDs
+    {
+        eSsInvalidID = 0,
+        eLynxRequest,
+        eLynxResponse,
+        eSsEndOfList
+    };
 
-	enum RequestIDs
-	{
-		eRqInvalidID = 0,
-		eRqDeviceInfo,
-		eRqStructInfo
-	};
+    enum RequestIDs
+    {
+        eRqInvalidID = 0,
+        eRqDeviceInfo,
+        eRqStructInfo
+    };
 
 
 //	enum SendMode
@@ -276,35 +276,35 @@ namespace LynxLib
         int _reservedSize;
     };
 
-	//---------------------------------------------------------------------------------------------------------------------------
-	//--------------------------------------------------- Structures ------------------------------------------------------------
-	//---------------------------------------------------------------------------------------------------------------------------
-	
+    //---------------------------------------------------------------------------------------------------------------------------
+    //--------------------------------------------------- Structures ------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------------
 
-	struct LynxID
-	{
-		LynxID()
-		{
-			deviceID = 0;
-			structTypeID = 0;
+
+    struct LynxID
+    {
+        LynxID()
+        {
+            deviceID = 0;
+            structTypeID = 0;
             structInstanceID = 0;
         }
 
         LynxID(uint8_t _deviceID, uint8_t _structTypeID, uint8_t _structInstanceID)
-		{
-			deviceID = _deviceID;
-			structTypeID = _structTypeID;
-			structInstanceID = _structInstanceID;
+        {
+            deviceID = _deviceID;
+            structTypeID = _structTypeID;
+            structInstanceID = _structInstanceID;
         }
 
-		LynxID& operator = (const LynxID other)
-		{
-			this->deviceID = other.deviceID;
-			this->structTypeID = other.structTypeID;
-			this->structInstanceID = other.structInstanceID;
+        LynxID& operator = (const LynxID other)
+        {
+            this->deviceID = other.deviceID;
+            this->structTypeID = other.structTypeID;
+            this->structInstanceID = other.structInstanceID;
 
-			return *this;
-		}
+            return *this;
+        }
 
         bool operator == (const LynxID& other) const
         {
@@ -314,338 +314,334 @@ namespace LynxLib
             return false;
         }
 
-		uint8_t deviceID;			// Identifies the current machine
-		uint8_t structTypeID;		// Identifies the type of struct
-		uint8_t structInstanceID;	// Identifies the instance of the struct
-	};
-
-	struct StructItem
-	{
-		StructItem(const char _name[], LynxDataType _dataType)
-            : name( _name ), dataType( _dataType ) {}
-		const char* name;
-		LynxDataType dataType;
+        uint8_t deviceID;			// Identifies the current machine
+        uint8_t structTypeID;		// Identifies the type of struct
+        uint8_t structInstanceID;	// Identifies the instance of the struct
     };
 
-	struct StructDefinition
-	{
-		StructDefinition(const char _structName[], const LynxStructMode _structMode, const StructItem* _structItems, int _size = 0);
+    struct StructItem
+    {
+        StructItem(const char _name[], LynxDataType _dataType)
+            : name( _name ), dataType( _dataType ) {}
+        const char* name;
+        LynxDataType dataType;
+    };
 
-		const char* structName;
-		const LynxStructMode structMode;
-		const StructItem* structItems;
-		int size;							// Number of elements in the list
-		int transferSize = 0;				// Total data transfer size in bytes (not including identifiers and checksum)
-	};
+    struct StructDefinition
+    {
+        StructDefinition(const char _structName[], const LynxStructMode _structMode, const StructItem* _structItems, int _size = 0);
 
-	struct LynxIpAddress
-	{
-		union Data
-		{
-			uint32_t data_32;
-			unsigned char data_8[4];
-		}data;
+        const char* structName;
+        const LynxStructMode structMode;
+        const StructItem* structItems;
+        int size;							// Number of elements in the list
+        int transferSize = 0;				// Total data transfer size in bytes (not including identifiers and checksum)
+    };
+
+    struct LynxIpAddress
+    {
+        union Data
+        {
+            uint32_t data_32;
+            unsigned char data_8[4];
+        }data;
 
         LynxIpAddress() { data.data_32 = 0; }
 
         LynxIpAddress(uint32_t _data) { data.data_32 = _data; }
 
-		LynxIpAddress(const unsigned char _data[4])
-		{
-			for (int i = 0; i < 4; i++)
-			{
-				data.data_8[i] = _data[i];
-			}
-        }
-
-        LynxIpAddress(unsigned char ip0, unsigned char ip1, unsigned char ip2, unsigned char ip3)
-		{
-			data.data_32 = 1;
-
-			if (data.data_8[0] == 1)	// Little endian
-			{
-				data.data_8[0] = ip3;
-				data.data_8[1] = ip2;
-				data.data_8[2] = ip1;
-				data.data_8[3] = ip0;
-			}
-			else						// Big endian
-			{
-				data.data_8[0] = ip0;
-				data.data_8[1] = ip1;
-				data.data_8[2] = ip2;
-				data.data_8[3] = ip3;
-			}
-
-        }
-
-	};
-
-	struct LynxDeviceInfo
-	{
-        LynxDeviceInfo()
-		{
-			deviceName[0] = '\0';
-			deviceID = 0;
-			for (int i = 0; i < 4; i++)
-			{
-				lynxVersion[i] = 0;
-			}
-			ipAddress = LynxIpAddress();
-			newDevice = false;
-        }
-
-		char deviceName[20];
-		uint8_t deviceID;
-		char lynxVersion[4];
-		LynxIpAddress ipAddress;
-		bool newDevice;
-	};
-
-	//---------------------------------------------------------------------------------------------------------------------------
-	//-------------------------------------------------- LynxRingBuffer ---------------------------------------------------------
-	//---------------------------------------------------------------------------------------------------------------------------
-
-	template <class T>
-	class LynxRingBuffer
-	{
-	private:
-		void writeElement(T element)
-		{
-			_buffer[_writeIndex] = element;
-
-			_writeIndex++;
-
-			if (_writeIndex >= _reservedSize)
-				_writeIndex = 0;
-		}
-
-	public:
-		enum E_RingBufferMode
-		{
-			eAllowOverflow = 0,
-			ePreventOverflow,
-			eRingBufferMode_EndOfList
-		};
-
-		LynxRingBuffer(E_RingBufferMode overflowMode = ePreventOverflow)
-		{
-			if (overflowMode < eRingBufferMode_EndOfList)
-				_overflowMode = overflowMode;
-			else
-				_overflowMode = ePreventOverflow;
-
-			_buffer = NULL;
-			_reservedSize = 0;
-			_writeIndex = 0;
-			_readIndex = 0;
-			_count = 0;
-		}
-
-		LynxRingBuffer(int size, E_RingBufferMode overflowMode = ePreventOverflow)
-		{
-			if (overflowMode < eRingBufferMode_EndOfList)
-				_overflowMode = overflowMode;
-			else
-				_overflowMode = ePreventOverflow;
-
-			_buffer = NULL;
-
-			this->init(size);
-		}
-
-		~LynxRingBuffer()
-		{
-			if (_buffer)
-			{
-				delete[] _buffer;
-				_buffer = NULL;
-			}
-		}
-
-		// Initializer, reserves space for data. If init has been run before, previous data will be deleted. 
-		// Returns number of elements reserved (should be the same as "size"), or -1 if error.
-		int init(int size)
-		{
-			if (_buffer)
-			{
-				delete[] _buffer;
-				_buffer = NULL;
-			}
-
-			_buffer = new T[size];
-
-			if (_buffer)
-			{
-				_count = 0;
-				_writeIndex = 0;
-				_readIndex = 0;
-				_reservedSize = size;
-
-				return _reservedSize;
-			}
-
-			return -1;
-		}
-
-		bool setOverflowMode(E_RingBufferMode overflowMode)
-		{
-			if (overflowMode >= eRingBufferMode_EndOfList)
-				return false;
-
-			_overflowMode = overflowMode;
-			return true;
-		}
-
-		E_RingBufferMode getOverflowMode()
-		{
-			return _overflowMode;
-		}
-
-		// Returns number of elements currently stored in buffer.
-		int count()
-		{
-			return _count;
-		}
-
-		// Returns free space in buffer.
-		int freeCount()
-		{
-			return (_reservedSize - _count);
-		}
-
-		int reservedSize()
-		{
-			return _reservedSize;
-		}
-
-		// Returns one element from the buffer. If there is nothing in the buffer, 0 is returned.
-		T read()
-		{
-			if (_count <= 0)
-				return T();
-
-			T temp = _buffer[_readIndex];
-
-			_count--;
-			_readIndex++;
-			if (_readIndex >= _reservedSize)
-				_readIndex = 0;
-
-			return temp;
-		}
-
-		// Reads "count" elements from the buffer and places it in "target".
-		// If "count" is greater then number of elements in buffer, available elements will be read.
-		// Returns number of elements read. 
-		int read(T* target, int count)
-		{
-			int size;
-			if (count > _count)
-				size = _count;
-			else
-				size = count;
-
-			for (int i = 0; i < size; i++)
-			{
-				target[i] = this->read();
-			}
-
-			return size;
-		}
-
-        int read(LynxLib::LynxList<char>& target)
+        LynxIpAddress(const unsigned char _data[4])
         {
-            target.append(this->_buffer, this->count());
-
-            for (int i = 0; i < this->count(); i++)
+            for (int i = 0; i < 4; i++)
             {
-                _count--;
-                _readIndex++;
-                if (_readIndex >= _reservedSize)
-                    _readIndex = 0;
+                data.data_8[i] = _data[i];
             }
         }
 
-		// Writes one element "source" to the buffer
-		// Overflow allowed:
-		//		Returns true if the buffer is overflowing (data will be overwritten), otherwise false
-		// Overflow prevented:
-		//		Returns true if the buffer is full (data will not be written), otherwise false
-		bool write(T source)
-		{
-			if (_count < _reservedSize)
-			{
-				writeElement(source);
-				_count++;
-				return false;
-			}
-			
-			switch (_overflowMode)
-			{
-			case eAllowOverflow:
-				writeElement(source);
-				break;
-			case ePreventOverflow:
-				break;			
-			}
-			
-			return true;
+        LynxIpAddress(unsigned char ip0, unsigned char ip1, unsigned char ip2, unsigned char ip3)
+        {
+            data.data_32 = 1;
 
-		}
+            if (data.data_8[0] == 1)	// Little endian
+            {
+                data.data_8[0] = ip3;
+                data.data_8[1] = ip2;
+                data.data_8[2] = ip1;
+                data.data_8[3] = ip0;
+            }
+            else						// Big endian
+            {
+                data.data_8[0] = ip0;
+                data.data_8[1] = ip1;
+                data.data_8[2] = ip2;
+                data.data_8[3] = ip3;
+            }
 
-		// Writes "count" elements from "source" to the buffer.
-		// Overflow allowed:
-		//		Returns -1 * elements written if the buffer is overflowing (data will be overwritten), otherwise it returns elements written.
-		// Overflow prevented:
-		//		Returns -1 * elements written if the buffer is full (data above max index will not be written), otherwise it returns elements written
-		int write(const T* source, int count)
-		{
-			bool overflow;
+        }
 
-			for (int i = 0; i < count; i++)
-			{
-				overflow = this->write(source[i]);
+    };
 
-				if (overflow && (_overflowMode == ePreventOverflow))
-					break;
-			}
+    struct LynxDeviceInfo
+    {
+        LynxDeviceInfo()
+        {
+            deviceName[0] = '\0';
+            deviceID = 0;
+            for (int i = 0; i < 4; i++)
+            {
+                lynxVersion[i] = 0;
+            }
+            ipAddress = LynxIpAddress();
+            newDevice = false;
+        }
 
-			if (overflow)
-				return (~count + 1);
+        char deviceName[20];
+        uint8_t deviceID;
+        char lynxVersion[4];
+        LynxIpAddress ipAddress;
+        bool newDevice;
+    };
 
-			return count;
-		}
+    //---------------------------------------------------------------------------------------------------------------------------
+    //-------------------------------------------------- LynxRingBuffer ---------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------------
 
-	private:
-		T* _buffer;
+    template <class T>
+    class LynxRingBuffer
+    {
+    private:
+        void writeElement(T element)
+        {
+            _buffer[_writeIndex] = element;
 
-		int _count;
-		int _reservedSize;
+            _writeIndex++;
 
-		int _writeIndex;
-		int _readIndex;
+            if (_writeIndex >= _reservedSize)
+                _writeIndex = 0;
+        }
 
-		E_RingBufferMode _overflowMode;
-	}; 
+    public:
+        enum E_RingBufferMode
+        {
+            eAllowOverflow = 0,
+            ePreventOverflow,
+            eRingBufferMode_EndOfList
+        };
+
+        LynxRingBuffer(E_RingBufferMode overflowMode = ePreventOverflow)
+        {
+            if (overflowMode < eRingBufferMode_EndOfList)
+                _overflowMode = overflowMode;
+            else
+                _overflowMode = ePreventOverflow;
+
+            _buffer = NULL;
+            _reservedSize = 0;
+            _writeIndex = 0;
+            _readIndex = 0;
+            _count = 0;
+        }
+
+        LynxRingBuffer(int size, E_RingBufferMode overflowMode = ePreventOverflow)
+        {
+            if (overflowMode < eRingBufferMode_EndOfList)
+                _overflowMode = overflowMode;
+            else
+                _overflowMode = ePreventOverflow;
+
+            _buffer = NULL;
+
+            this->init(size);
+        }
+
+        ~LynxRingBuffer()
+        {
+            if (_buffer)
+            {
+                delete[] _buffer;
+                _buffer = NULL;
+            }
+        }
+
+        // Initializer, reserves space for data. If init has been run before, previous data will be deleted.
+        // Returns number of elements reserved (should be the same as "size"), or -1 if error.
+        int init(int size)
+        {
+            if (_buffer)
+            {
+                delete[] _buffer;
+                _buffer = NULL;
+            }
+
+            _buffer = new T[size];
+
+            if (_buffer)
+            {
+                _count = 0;
+                _writeIndex = 0;
+                _readIndex = 0;
+                _reservedSize = size;
+
+                return _reservedSize;
+            }
+
+            return -1;
+        }
+
+        bool setOverflowMode(E_RingBufferMode overflowMode)
+        {
+            if (overflowMode >= eRingBufferMode_EndOfList)
+                return false;
+
+            _overflowMode = overflowMode;
+            return true;
+        }
+
+        E_RingBufferMode getOverflowMode()
+        {
+            return _overflowMode;
+        }
+
+        // Returns number of elements currently stored in buffer.
+        int count()
+        {
+            return _count;
+        }
+
+        // Returns free space in buffer.
+        int freeCount()
+        {
+            return (_reservedSize - _count);
+        }
+
+        int reservedSize()
+        {
+            return _reservedSize;
+        }
+
+        // Returns one element from the buffer. If there is nothing in the buffer, 0 is returned.
+        T read()
+        {
+            if (_count <= 0)
+                return T();
+
+            T temp = _buffer[_readIndex];
+
+            _count--;
+            _readIndex++;
+            if (_readIndex >= _reservedSize)
+                _readIndex = 0;
+
+            return temp;
+        }
+
+        // Reads "count" elements from the buffer and places it in "target".
+        // If "count" is greater then number of elements in buffer, available elements will be read.
+        // Returns number of elements read.
+        int read(T* target, int count)
+        {
+            int size;
+            if (count > _count)
+                size = _count;
+            else
+                size = count;
+
+            for (int i = 0; i < size; i++)
+            {
+                target[i] = this->read();
+            }
+
+            return size;
+        }
+
+        int read(LynxLib::LynxList<char>& target, int size)
+        {
+            target.reserveAndCopy(target.count()+size);
+            for (int i = 0; i < size; ++i) {
+                target.append(this->read());
+            }
+            return size;
+        }
+
+        // Writes one element "source" to the buffer
+        // Overflow allowed:
+        //		Returns true if the buffer is overflowing (data will be overwritten), otherwise false
+        // Overflow prevented:
+        //		Returns true if the buffer is full (data will not be written), otherwise false
+        bool write(T source)
+        {
+            if (_count < _reservedSize)
+            {
+                writeElement(source);
+                _count++;
+                return false;
+            }
+
+            switch (_overflowMode)
+            {
+            case eAllowOverflow:
+                writeElement(source);
+                break;
+            case ePreventOverflow:
+                break;
+            }
+
+            return true;
+
+        }
+
+        // Writes "count" elements from "source" to the buffer.
+        // Overflow allowed:
+        //		Returns -1 * elements written if the buffer is overflowing (data will be overwritten), otherwise it returns elements written.
+        // Overflow prevented:
+        //		Returns -1 * elements written if the buffer is full (data above max index will not be written), otherwise it returns elements written
+        int write(const T* source, int count)
+        {
+            bool overflow;
+
+            for (int i = 0; i < count; i++)
+            {
+                overflow = this->write(source[i]);
+
+                if (overflow && (_overflowMode == ePreventOverflow))
+                    break;
+            }
+
+            if (overflow)
+                return (~count + 1);
+
+            return count;
+        }
+
+    private:
+        T* _buffer;
+
+        int _count;
+        int _reservedSize;
+
+        int _writeIndex;
+        int _readIndex;
+
+        E_RingBufferMode _overflowMode;
+    };
 
 
-	
-	//---------------------------------------------------------------------------------------------------------------------------
-	//------------------------------------------------ LynxStructure ------------------------------------------------------------
-	//---------------------------------------------------------------------------------------------------------------------------
 
-	class LynxStructure
-	{
-	public:
+    //---------------------------------------------------------------------------------------------------------------------------
+    //------------------------------------------------ LynxStructure ------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------------
+
+    class LynxStructure
+    {
+    public:
 
         // LynxID lynxID; // identifies current datagram
 
-		LynxStructure()
-		{
-			_indexingSize = 0;
-			_data = NULL;
-			_structDefinition = NULL;
+        LynxStructure()
+        {
+            _indexingSize = 0;
+            _data = NULL;
+            _structDefinition = NULL;
         }
 
         LynxStructure(const StructDefinition* structDefinition, LynxID lynxID)
@@ -657,337 +653,337 @@ namespace LynxLib
             this->init(structDefinition, lynxID);
         }
 
-		~LynxStructure()
-		{
-			if (_data != NULL)
-			{
-				delete[] _data;
-				_data = NULL;
-			}
+        ~LynxStructure()
+        {
+            if (_data != NULL)
+            {
+                delete[] _data;
+                _data = NULL;
+            }
         }
 
-		LynxStructure& operator = (const LynxStructure& other)
-		{
-			this->init(other.getStructDefinition(), other.getID());
+        LynxStructure& operator = (const LynxStructure& other)
+        {
+            this->init(other.getStructDefinition(), other.getID());
 
-			if (other.getStructDefinition() == NULL)
-				return *this;
+            if (other.getStructDefinition() == NULL)
+                return *this;
 
-			const char* otherPtr = reinterpret_cast<const char*>(other.getConstDataPointer());
+            const char* otherPtr = reinterpret_cast<const char*>(other.getConstDataPointer());
 
-			for (int i = 0; i < this->getIndexingSize()*this->_structDefinition->size; i++)
-			{
-				_data[i] = otherPtr[i];
-			}
+            for (int i = 0; i < this->getIndexingSize()*this->_structDefinition->size; i++)
+            {
+                _data[i] = otherPtr[i];
+            }
 
-			return *this;
-		}
+            return *this;
+        }
 
-		// Initializes current LynxStructure. WARNING: Use of uninitialized LynxStructure will lead to null reference exception!
+        // Initializes current LynxStructure. WARNING: Use of uninitialized LynxStructure will lead to null reference exception!
         void init(const StructDefinition* structDefinition, LynxID lynxID);
 
-		// Prepares data for transmission in "dataBuffer". Returns size of copied data if success, -1 if failure, -5 if checksum is wrong
-		int toBuffer(LynxList<char>& dataBuffer, int subindex = -1) const;
+        // Prepares data for transmission in "dataBuffer". Returns size of copied data if success, -1 if failure, -5 if checksum is wrong
+        int toBuffer(LynxList<char>& dataBuffer, int subindex = -1) const;
 
-		// Returns size of copied data if success, -1 if failure
-		int fromBuffer(const LynxList<char>& dataBuffer);
+        // Returns size of copied data if success, -1 if failure
+        int fromBuffer(const LynxList<char>& dataBuffer);
 
-		// Sets all elements in structure to 0 (on storage level)
-		void clear();
+        // Sets all elements in structure to 0 (on storage level)
+        void clear();
 
-		// Returns a const safe pointer to struct def
+        // Returns a const safe pointer to struct def
         const StructDefinition* getStructDefinition() const { return _structDefinition; }
 
-		// Returns number of elements in struct
+        // Returns number of elements in struct
         int getSize() const { return this->_structDefinition->size; }
 
-		// Returns number of bytes per index
+        // Returns number of bytes per index
         int getIndexingSize() const { return this->_indexingSize; }
 
-		// Returns a pointer to data
+        // Returns a pointer to data
         void* getDataPointer() { return _data; }
 
-		// Returns a const safe pointer to storage data
-		const void* getConstDataPointer() const { return _data;  }
+        // Returns a const safe pointer to storage data
+        const void* getConstDataPointer() const { return _data;  }
 
-		// Returns the total size of the datapackage in bytes. Including identification bytes and checksum.
+        // Returns the total size of the datapackage in bytes. Including identification bytes and checksum.
         int getTransferSize(int subIndex = -1) const;
 
-		template <class T>
-		int copyDataToTarget(void* target, int size = 0)
-		{
-			if (!(_structDefinition->structMode == eArrayMode))
-			{
-				return -2;
-			}
-			if (size == 0)
-			{
-				size = this->_structDefinition->size;
-			}
-			else
-			{
-				if (size > _structDefinition->size)
-				{
-					return -1;
-				}
-			}
-			if (this->checkLocalSize(this->_structDefinition->structItems->dataType) != sizeof(T))
-			{
-				return -3;
-			}
+        template <class T>
+        int copyDataToTarget(void* target, int size = 0)
+        {
+            if (!(_structDefinition->structMode == eArrayMode))
+            {
+                return -2;
+            }
+            if (size == 0)
+            {
+                size = this->_structDefinition->size;
+            }
+            else
+            {
+                if (size > _structDefinition->size)
+                {
+                    return -1;
+                }
+            }
+            if (this->checkLocalSize(this->_structDefinition->structItems->dataType) != sizeof(T))
+            {
+                return -3;
+            }
 
             T* pDest = static_cast<T*>(target);
             T* pSrc = static_cast<T*>(this->_data);
 
-			for (int i = 0; i < size; i++)
-			{
-				pDest[i] = pSrc[i];
-			}
+            for (int i = 0; i < size; i++)
+            {
+                pDest[i] = pSrc[i];
+            }
 
             // this->_dataChanged = false;
 
-			return size;
-		}
+            return size;
+        }
 
-		template <class T>
-		int copyDataFromTarget(const void* target, int size = 0)
-		{
-			if (!(this->_structDefinition->structMode == eArrayMode))
-			{
-				return -2;
-			}
-			if (size == 0)
-			{
-				size = this->_structDefinition->size;
-			}
-			else
-			{
-				if (size > this->_structDefinition->size)
-				{
-					return -1;
-				}
-			}
-			if (this->checkLocalSize(this->_structDefinition->structItems->dataType) != sizeof(T))
-			{
-				return -3;
-			}
+        template <class T>
+        int copyDataFromTarget(const void* target, int size = 0)
+        {
+            if (!(this->_structDefinition->structMode == eArrayMode))
+            {
+                return -2;
+            }
+            if (size == 0)
+            {
+                size = this->_structDefinition->size;
+            }
+            else
+            {
+                if (size > this->_structDefinition->size)
+                {
+                    return -1;
+                }
+            }
+            if (this->checkLocalSize(this->_structDefinition->structItems->dataType) != sizeof(T))
+            {
+                return -3;
+            }
 
             T* pSrc = static_cast<T*>(target);
             T* pDest = static_cast<T*>(this->_data);
 
-			for (int i = 0; i < size; i++)
-			{
-				pDest[i] = pSrc[i];
-			}
+            for (int i = 0; i < size; i++)
+            {
+                pDest[i] = pSrc[i];
+            }
 
             // this->_dataChanged = true;
 
-			return size;
-		}
+            return size;
+        }
 
-		template <class T>
+        template <class T>
         T getData(int identifier) const
-		{	
-			int offset = getOffset(identifier);
-			if (offset < 0)
-			{
-				return T();
-			}
+        {
+            int offset = getOffset(identifier);
+            if (offset < 0)
+            {
+                return T();
+            }
 
             // this->_dataChanged = false;
-			
+
             return *(reinterpret_cast<T*>(_data + offset));
 
-		}
+        }
 
-		template <class T>
-		void setData(int identifier, T dataIn)
-		{
-			int offset = getOffset(identifier);
-			if (offset < 0)
-			{
-				return;
-			}
+        template <class T>
+        void setData(int identifier, T dataIn)
+        {
+            int offset = getOffset(identifier);
+            if (offset < 0)
+            {
+                return;
+            }
 
             T* temp = reinterpret_cast<T*>(_data + offset);
 
-			*temp = dataIn;
+            *temp = dataIn;
 
             // this->_dataChanged = true;
 
-		}
+        }
 
-		template <class T>
-		bool getBit(int identifier, T bitMask)
-		{
-			return ((getData<T>(identifier) & bitMask) != 0);
-		}
+        template <class T>
+        bool getBit(int identifier, T bitMask)
+        {
+            return ((getData<T>(identifier) & bitMask) != 0);
+        }
 
-		template <class T>
-		void setBit(int identifier, T bitMask, bool state)
-		{
-			T temp = getData<T>(identifier);
-			if (state)
-			{
-				setData(identifier, temp | bitMask);
-			}
-			else
-			{
-				setData(identifier, temp & ~bitMask);
-			}
-		}
+        template <class T>
+        void setBit(int identifier, T bitMask, bool state)
+        {
+            T temp = getData<T>(identifier);
+            if (state)
+            {
+                setData(identifier, temp | bitMask);
+            }
+            else
+            {
+                setData(identifier, temp & ~bitMask);
+            }
+        }
 
-		static int checkLocalSize(LynxDataType dataType);
+        static int checkLocalSize(LynxDataType dataType);
 
-		static int checkTransferSize(LynxDataType dataType);
+        static int checkTransferSize(LynxDataType dataType);
 
         const LynxID& getID() const { return _lynxID; }
 
-	private:
-		// Gets the offset to index directly to the datapointer
+    private:
+        // Gets the offset to index directly to the datapointer
         int getOffset(int identifier) const;
 
-		// Writes one variable from the lynx storage to "dataBuffer"
+        // Writes one variable from the lynx storage to "dataBuffer"
         int writeVarToBuffer(LynxList<char>& dataBuffer, int subIndex) const;
-		// Writes one variable from "dataBuffer" to the lynx storage 
+        // Writes one variable from "dataBuffer" to the lynx storage
         int writeVarFromBuffer(const LynxList<char>& dataBuffer, int bufferIndex, int subIndex);
 
-		// Identifies current datagram
+        // Identifies current datagram
         LynxID _lynxID;
 
-		// The number of storage bytes per index
-		int _indexingSize;
-		// The total number of storage bytes reserved for datagrams
-		int _localStorageSize;
-		// Stored data pointer
-		char* _data;
+        // The number of storage bytes per index
+        int _indexingSize;
+        // The total number of storage bytes reserved for datagrams
+        int _localStorageSize;
+        // Stored data pointer
+        char* _data;
 
-		// Pointer to the struct definition
-		const StructDefinition* _structDefinition;
+        // Pointer to the struct definition
+        const StructDefinition* _structDefinition;
 
-	};
+    };
 
-	//---------------------------------------------------------------------------------------------------------------------------
-	//-------------------------------------------------- LynxHandler ------------------------------------------------------------
-	//---------------------------------------------------------------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------------
+    //-------------------------------------------------- LynxHandler ------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------------
 
-	class LynxHandler
-	{
-	public:
-		// uint8_t deviceID;
+    class LynxHandler
+    {
+    public:
+        // uint8_t deviceID;
 
-		LynxHandler(uint8_t _deviceID, const char* _deviceName, int nStructs = 0)
-		{
-			this->_deviceInfo.deviceID = _deviceID;
-			
-			char tempVersion[4] = LYNX_VERSION;
-			for (int i = 0; i < 4; i++)
-			{
-				_deviceInfo.lynxVersion[i] = tempVersion[i];
-			}
+        LynxHandler(uint8_t _deviceID, const char* _deviceName, int nStructs = 0)
+        {
+            this->_deviceInfo.deviceID = _deviceID;
 
-			for (int i = 0; i < 20; i++)
-			{
-				if ((_deviceName[i] == '\0') || (i == 19))
-				{
-					this->_deviceInfo.deviceName[i] = '\0';
-					break;
-				}
-				this->_deviceInfo.deviceName[i] = _deviceName[i];
-			}
+            char tempVersion[4] = LYNX_VERSION;
+            for (int i = 0; i < 4; i++)
+            {
+                _deviceInfo.lynxVersion[i] = tempVersion[i];
+            }
+
+            for (int i = 0; i < 20; i++)
+            {
+                if ((_deviceName[i] == '\0') || (i == 19))
+                {
+                    this->_deviceInfo.deviceName[i] = '\0';
+                    break;
+                }
+                this->_deviceInfo.deviceName[i] = _deviceName[i];
+            }
 
             _newScanRequest = false;
-			this->init(nStructs);
+            this->init(nStructs);
         }
 
-		~LynxHandler()
-		{
+        ~LynxHandler()
+        {
         }
 
-		void init(int nStructs = 0);
+        void init(int nStructs = 0);
 
-		LynxID addStructure(uint8_t _structType, uint8_t _structInstance, const StructDefinition* _structDefinition);
+        LynxID addStructure(uint8_t _structType, uint8_t _structInstance, const StructDefinition* _structDefinition);
 
-		int scanRequest(char* dataBuffer);
+        int scanRequest(char* dataBuffer);
 
-		int copyData(LynxID source, LynxID target, int index = -1);
+        int copyData(LynxID source, LynxID target, int index = -1);
 
-		template <class T>
-		int copyDataToTarget(LynxID _lynxID, void* target, int size = 0)
-		{
-			int index = this->indexFromID(_lynxID);
+        template <class T>
+        int copyDataToTarget(LynxID _lynxID, void* target, int size = 0)
+        {
+            int index = this->indexFromID(_lynxID);
 
-			if (index < 0)
-			{
-				return index;
-			}
+            if (index < 0)
+            {
+                return index;
+            }
 
             return _structures.at(index).copyDataToTarget<T>(target, size);
-		}
+        }
 
-		template <class T>
-		int copyDataFromTarget(LynxID _lynxID, const void* target, int size = 0)
-		{
-			int index = this->indexFromID(_lynxID);
+        template <class T>
+        int copyDataFromTarget(LynxID _lynxID, const void* target, int size = 0)
+        {
+            int index = this->indexFromID(_lynxID);
 
-			if (index < 0)
-			{
-				return index;
-			}
+            if (index < 0)
+            {
+                return index;
+            }
 
-			return _structures[index].copyDataFromTarget<T>(target, size);
-		}
+            return _structures[index].copyDataFromTarget<T>(target, size);
+        }
 
-		template <class T>
+        template <class T>
         T getData(LynxID _lynxID, int _identifier) const
-		{
-			int index = this->indexFromID(_lynxID);
+        {
+            int index = this->indexFromID(_lynxID);
 
-			if (index >= 0)
-			{
+            if (index >= 0)
+            {
                 return this->_structures.at(index).getData<T>(_identifier);
-			}
-	
-			return 0;
-		}
+            }
 
-		template <class T>
-		T setData(LynxID _lynxID, int _identifier, T data) // Returns 0 if _lynxID was not found
-		{
-			int index = this->indexFromID(_lynxID);
+            return 0;
+        }
 
-			if (index >= 0)
-			{
-				this->_structures[index].setData<T>(_identifier, data);
-				return data;
-			}
+        template <class T>
+        T setData(LynxID _lynxID, int _identifier, T data) // Returns 0 if _lynxID was not found
+        {
+            int index = this->indexFromID(_lynxID);
 
-			return 0;
-		}
+            if (index >= 0)
+            {
+                this->_structures[index].setData<T>(_identifier, data);
+                return data;
+            }
 
-		template <class T>
-		bool getBit(LynxID _lynxID, int identifier, T bitMask)
-		{
-			int index = this->indexFromID(_lynxID);
-			if (index < 0)
-			{
-				return false;
-			}
+            return 0;
+        }
+
+        template <class T>
+        bool getBit(LynxID _lynxID, int identifier, T bitMask)
+        {
+            int index = this->indexFromID(_lynxID);
+            if (index < 0)
+            {
+                return false;
+            }
 
             return this->_structures.at(index).getBit<T>(identifier, bitMask);
-		}
+        }
 
-		template <class T>
-		void setBit(LynxID _lynxID, int identifier, T bitMask, bool state)
-		{
-			int index = this->indexFromID(_lynxID);
-			if (index < 0)
-			{
-				return;
-			}
+        template <class T>
+        void setBit(LynxID _lynxID, int identifier, T bitMask, bool state)
+        {
+            int index = this->indexFromID(_lynxID);
+            if (index < 0)
+            {
+                return;
+            }
 
-			this->_structures[index].setBit<T>(identifier, bitMask, state);
-		}
+            this->_structures[index].setBit<T>(identifier, bitMask, state);
+        }
 
 //		int toBuffer(LynxID _lynxID, char* dataBuffer, SendMode sendMode = eAllVariables, int subIndex = 0 );
 
@@ -1001,38 +997,38 @@ namespace LynxLib
 
         int getTranferSize(LynxID _lynxID, int subIndex = -1) const;
 
-		LynxList<LynxID> getIDs();
+        LynxList<LynxID> getIDs();
 
-		void getIDs(LynxList<LynxID>& list);
+        void getIDs(LynxList<LynxID>& list);
 
-		// static int getTransferSize(StandardStructIDs internalDatagram);
+        // static int getTransferSize(StandardStructIDs internalDatagram);
 
         // int size() { return _size; }
 
-		int newScanResponses(); // returns number of remaining scan responses
+        int newScanResponses(); // returns number of remaining scan responses
 
-		LynxDeviceInfo getScanResponse();
+        LynxDeviceInfo getScanResponse();
 
         bool newScanRequest() { return _newScanRequest; }
 
-		int sendScanResponse(char* dataBuffer);
+        int sendScanResponse(char* dataBuffer);
 
         // Returns true if "_lynxID" exists in the hendler, false if not
         bool isMember(LynxID _lynxID);
 
-	private:
-		LynxDeviceInfo _deviceInfo;
+    private:
+        LynxDeviceInfo _deviceInfo;
 
-		// char deviceName[20];
+        // char deviceName[20];
 
-		// bool _newScanResponse;
+        // bool _newScanResponse;
 
-		bool _newScanRequest;
+        bool _newScanRequest;
 
-		LynxList<LynxDeviceInfo> _availableDevices;
-		// int _newScanResponses;
+        LynxList<LynxDeviceInfo> _availableDevices;
+        // int _newScanResponses;
 
-		int checkAvailableDevices(LynxDeviceInfo& deviceName);
+        int checkAvailableDevices(LynxDeviceInfo& deviceName);
 
         LynxList<LynxStructure> _structures;
 //        int _size;
@@ -1040,18 +1036,18 @@ namespace LynxLib
 
         int indexFromID(LynxID& _lynxID) const;
 
-		int handleInternalDatagram(const char* dataBuffer, LynxIpAddress ipAddress);
+        int handleInternalDatagram(const char* dataBuffer, LynxIpAddress ipAddress);
 
-		int handleRequest(const char* dataBuffer, LynxIpAddress ipAddress);
+        int handleRequest(const char* dataBuffer, LynxIpAddress ipAddress);
 
-		int handleResponse(const char* dataBuffer, LynxIpAddress ipAddress);
+        int handleResponse(const char* dataBuffer, LynxIpAddress ipAddress);
 
-		LynxDeviceInfo receiveScanResponse(const char* dataBuffer, LynxIpAddress ipAddress);
+        LynxDeviceInfo receiveScanResponse(const char* dataBuffer, LynxIpAddress ipAddress);
 
-		int datagramFromBuffer(const char* dataBuffer);
+        int datagramFromBuffer(const char* dataBuffer);
 
         int datagramFromBuffer(const LynxList<char>& dataBuffer);
-	};
+    };
 
 
  }

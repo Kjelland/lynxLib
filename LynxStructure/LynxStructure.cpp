@@ -10,53 +10,53 @@
 
 namespace LynxLib
 {
-	//---------------------------------------------------------------------------------------------------------------------------
-	//------------------------------------------------ LynxStructure ------------------------------------------------------------
-	//---------------------------------------------------------------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------------
+    //------------------------------------------------ LynxStructure ------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------------
 
-	void LynxStructure::init(const StructDefinition* structDefinition, LynxID lynxID)
-	{
-		this->_lynxID = lynxID;
+    void LynxStructure::init(const StructDefinition* structDefinition, LynxID lynxID)
+    {
+        this->_lynxID = lynxID;
 
-		if (structDefinition != NULL)
-		{
-			switch (structDefinition->structMode)
-			{
-			case LynxLib::eStructureMode:
-				int tempSize;
-				for (int i = 0; i < structDefinition->size; i++)
-				{
-					tempSize = checkLocalSize(structDefinition->structItems[i].dataType);
+        if (structDefinition != NULL)
+        {
+            switch (structDefinition->structMode)
+            {
+            case LynxLib::eStructureMode:
+                int tempSize;
+                for (int i = 0; i < structDefinition->size; i++)
+                {
+                    tempSize = checkLocalSize(structDefinition->structItems[i].dataType);
 
-					if (tempSize > this->_indexingSize)
-					{
-						this->_indexingSize = tempSize;
-					}
+                    if (tempSize > this->_indexingSize)
+                    {
+                        this->_indexingSize = tempSize;
+                    }
 
-				}
-				break;
-			case LynxLib::eArrayMode:
-				if (structDefinition->size <= 0)
-				{
-					return;
-				}
-				this->_indexingSize = checkLocalSize(structDefinition->structItems[0].dataType);
-				break;
-			default:
-				return;
-			}
+                }
+                break;
+            case LynxLib::eArrayMode:
+                if (structDefinition->size <= 0)
+                {
+                    return;
+                }
+                this->_indexingSize = checkLocalSize(structDefinition->structItems[0].dataType);
+                break;
+            default:
+                return;
+            }
 
-			if (_data)
-				delete[] _data;
+            if (_data)
+                delete[] _data;
 
 
-			_data = new char[structDefinition->size*this->_indexingSize];
-			this->_structDefinition = structDefinition;
+            _data = new char[structDefinition->size*this->_indexingSize];
+            this->_structDefinition = structDefinition;
 
-			this->clear();
-		}
+            this->clear();
+        }
 
-	}
+    }
 
     int LynxStructure::toBuffer(LynxList<char>& dataBuffer, int subIndex) const
     {
@@ -65,17 +65,17 @@ namespace LynxLib
             return -4;
 
         dataBuffer.clear();
-		// Check neccessary storage in the buffer to avoid repeating allocation
-		if (this->getTransferSize(subIndex) > dataBuffer.reservedSize())
-			dataBuffer.reserve(this->getTransferSize(subIndex));
+        // Check neccessary storage in the buffer to avoid repeating allocation
+        if (this->getTransferSize(subIndex) > dataBuffer.reservedSize())
+            dataBuffer.reserve(this->getTransferSize(subIndex));
 
 
-		//  Write ID
+        //  Write ID
         dataBuffer.append(char(this->_lynxID.deviceID));
         dataBuffer.append(char(this->_lynxID.structTypeID));
         dataBuffer.append(char(this->_lynxID.structInstanceID));
 
-		// Shift subIndex by +1 for unsigned transmission. 0 if all elements
+        // Shift subIndex by +1 for unsigned transmission. 0 if all elements
         int tempIndex;
         if (subIndex < 0)
             tempIndex = 0;
@@ -137,7 +137,7 @@ namespace LynxLib
         }
 
         if ((localChecksum & 0xff) != (remoteChecksum & 0xff)) // & with 0xff to ensure 8 bit overflow, even on higher storage bits platforms
-			return -5; // Return error code -5 if checksum is wrong
+            return -5; // Return error code -5 if checksum is wrong
 
         if (lynxIndex == 0) // Copy all data
         {
@@ -156,7 +156,7 @@ namespace LynxLib
             lynxIndex--;
 
             if (lynxIndex > this->_structDefinition->size)
-				return -1;
+                return -1;
 
             tempSize = writeVarFromBuffer(dataBuffer, index, lynxIndex);
             if (tempSize > 0)
@@ -169,16 +169,16 @@ namespace LynxLib
 
     }
 
-	void LynxStructure::clear()
-	{
-		for (int i = 0; i < this->_structDefinition->size*this->_indexingSize; i++)
-		{
-			_data[i] = 0;
-		}
-	}
+    void LynxStructure::clear()
+    {
+        for (int i = 0; i < this->_structDefinition->size*this->_indexingSize; i++)
+        {
+            _data[i] = 0;
+        }
+    }
 
     int LynxStructure::getTransferSize(int subIndex) const
-	{
+    {
         if(subIndex < 0)
             return (this->_structDefinition->transferSize + LYNX_ID_BYTES + LYNX_INDEXER_BYTES + LYNX_CHECKSUM_BYTES);
         else
@@ -190,100 +190,100 @@ namespace LynxLib
             temp += LYNX_ID_BYTES + LYNX_INDEXER_BYTES + LYNX_CHECKSUM_BYTES;
             return temp;
         }
-	}
-	
+    }
+
     int LynxStructure::checkLocalSize(LynxDataType dataType)
-	{
-		int temp = 0;
-		switch (dataType)
-		{
-		case eInt8:
-			temp = sizeof(int8_t);
-			break;
-		case eUint8:
-			temp = sizeof(uint8_t);
-			break;
-		case eInt16:
-			temp = sizeof(int16_t);
-			break;
-		case eUint16:
-			temp = sizeof(uint16_t);
-			break;
-		case eInt32:
-			temp = sizeof(int32_t);
-			break;
-		case eUint32:
-			temp = sizeof(uint32_t);
-			break;
-		case eInt64:
-			temp = sizeof(int64_t);
-			break;
-		case eUint64:
-			temp = sizeof(uint64_t);
-			break;
-		case eFloat:
-			temp = sizeof(float);
-			break;
-		case eDouble:
-			temp = sizeof(double);
-			break;
-		case eIQ:
-			temp = sizeof(uint32_t);
-			break;
-		default:
-			temp = 0;
-			break;
-		}
+    {
+        int temp = 0;
+        switch (dataType)
+        {
+        case eInt8:
+            temp = sizeof(int8_t);
+            break;
+        case eUint8:
+            temp = sizeof(uint8_t);
+            break;
+        case eInt16:
+            temp = sizeof(int16_t);
+            break;
+        case eUint16:
+            temp = sizeof(uint16_t);
+            break;
+        case eInt32:
+            temp = sizeof(int32_t);
+            break;
+        case eUint32:
+            temp = sizeof(uint32_t);
+            break;
+        case eInt64:
+            temp = sizeof(int64_t);
+            break;
+        case eUint64:
+            temp = sizeof(uint64_t);
+            break;
+        case eFloat:
+            temp = sizeof(float);
+            break;
+        case eDouble:
+            temp = sizeof(double);
+            break;
+        case eIQ:
+            temp = sizeof(uint32_t);
+            break;
+        default:
+            temp = 0;
+            break;
+        }
 
-		return temp;
-	}
-	
+        return temp;
+    }
 
-	int LynxStructure::checkTransferSize(LynxDataType dataType)
-	{
-		int temp = 0;
-		switch (dataType)
-		{
-		case eInt8:
-			temp = 1;
-			break;
-		case eUint8:
-			temp = 1;
-			break;
-		case eInt16:
-			temp = 2;
-			break;
-		case eUint16:
-			temp = 2;
-			break;
-		case eInt32:
-			temp = 4;
-			break;
-		case eUint32:
-			temp = 4;
-			break;
-		case eInt64:
-			temp = 8;
-			break;
-		case eUint64:
-			temp = 8;
-			break;
-		case eFloat:
-			temp = 4;
-			break;
-		case eDouble:
-			temp = 8;
-			break;
-		case eIQ:
-			temp = 4;
-			break;
-		default:
-			temp = -1;
-			break;
-		}
 
-		return temp;
-	}
+    int LynxStructure::checkTransferSize(LynxDataType dataType)
+    {
+        int temp = 0;
+        switch (dataType)
+        {
+        case eInt8:
+            temp = 1;
+            break;
+        case eUint8:
+            temp = 1;
+            break;
+        case eInt16:
+            temp = 2;
+            break;
+        case eUint16:
+            temp = 2;
+            break;
+        case eInt32:
+            temp = 4;
+            break;
+        case eUint32:
+            temp = 4;
+            break;
+        case eInt64:
+            temp = 8;
+            break;
+        case eUint64:
+            temp = 8;
+            break;
+        case eFloat:
+            temp = 4;
+            break;
+        case eDouble:
+            temp = 8;
+            break;
+        case eIQ:
+            temp = 4;
+            break;
+        default:
+            temp = -21;
+            break;
+        }
+
+        return temp;
+    }
 
     int LynxStructure::writeVarToBuffer(LynxList<char>& dataBuffer, int subIndex) const
     {
@@ -406,32 +406,32 @@ namespace LynxLib
     }
 
     int LynxStructure::getOffset(int target) const
-	{
-		if ((this->_structDefinition->size == 0) || (target >= this->_structDefinition->size))
-			return -1;
+    {
+        if ((this->_structDefinition->size == 0) || (target >= this->_structDefinition->size))
+            return -1;
 
-		return (target * this->_indexingSize);
+        return (target * this->_indexingSize);
 
-	}
+    }
 
-	//---------------------------------------------------------------------------------------------------------------------------
-	//-------------------------------------------------- LynxHandler ------------------------------------------------------------
-	//---------------------------------------------------------------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------------
+    //-------------------------------------------------- LynxHandler ------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------------
 
-	void LynxHandler::init(int nStructs)
-	{
-		if (nStructs > 0)
-		{
+    void LynxHandler::init(int nStructs)
+    {
+        if (nStructs > 0)
+        {
             _structures.reserve(nStructs);
-		}
-	}
+        }
+    }
 
-	LynxID LynxHandler::addStructure(uint8_t _structType, uint8_t _structInstance, const StructDefinition* _structDefinition)
-	{
-		if (_structDefinition->size <= 0)
-		{
-			return LynxID();
-		}
+    LynxID LynxHandler::addStructure(uint8_t _structType, uint8_t _structInstance, const StructDefinition* _structDefinition)
+    {
+        if (_structDefinition->size <= 0)
+        {
+            return LynxID();
+        }
 
         LynxID temp(this->_deviceInfo.deviceID, _structType, _structInstance);
 
@@ -439,119 +439,119 @@ namespace LynxLib
             return temp;
 
         _structures.append();
-		_structures[_structures.count() - 1].init(_structDefinition, temp);
+        _structures[_structures.count() - 1].init(_structDefinition, temp);
         return temp;
     }
 
-	int LynxHandler::scanRequest(char* dataBuffer)
-	{
-		int index = 0;
-		dataBuffer[index] = char(LYNX_INTERNAL_DATAGRAM);
-		index++;
-		dataBuffer[index] = char(eLynxRequest);
-		index++;
-		dataBuffer[index] = char(eRqDeviceInfo);
-		index++;
+    int LynxHandler::scanRequest(char* dataBuffer)
+    {
+        int index = 0;
+        dataBuffer[index] = char(LYNX_INTERNAL_DATAGRAM);
+        index++;
+        dataBuffer[index] = char(eLynxRequest);
+        index++;
+        dataBuffer[index] = char(eRqDeviceInfo);
+        index++;
 
-		for (int i = 0; i < 20; i++)
-		{
-			if ((this->_deviceInfo.deviceName[i] == '\0') || (i == 19))
-			{
-				dataBuffer[index] = '\0';
-				index++;
-				break;
-			}
-			dataBuffer[index] = this->_deviceInfo.deviceName[i];
-			index++;
-		}
+        for (int i = 0; i < 20; i++)
+        {
+            if ((this->_deviceInfo.deviceName[i] == '\0') || (i == 19))
+            {
+                dataBuffer[index] = '\0';
+                index++;
+                break;
+            }
+            dataBuffer[index] = this->_deviceInfo.deviceName[i];
+            index++;
+        }
 
-		dataBuffer[index] = char(this->_deviceInfo.deviceID);
-		index++;
+        dataBuffer[index] = char(this->_deviceInfo.deviceID);
+        index++;
 
-		char tempVersion[4] = LYNX_VERSION;
-		for (int i = 0; i < 4; i++)
-		{
-			dataBuffer[index] = tempVersion[i];
-			index++;
-		}
+        char tempVersion[4] = LYNX_VERSION;
+        for (int i = 0; i < 4; i++)
+        {
+            dataBuffer[index] = tempVersion[i];
+            index++;
+        }
 
-		char checksum = 0;
-		for (int i = 0; i < index; i++)
-		{
-			checksum += dataBuffer[i];
-		}
-		dataBuffer[index] = checksum;
-		index++;
+        char checksum = 0;
+        for (int i = 0; i < index; i++)
+        {
+            checksum += dataBuffer[i];
+        }
+        dataBuffer[index] = checksum;
+        index++;
 
-		return index;
-	}
+        return index;
+    }
 
-	int LynxHandler::copyData(LynxID source, LynxID target, int index)
-	{
-		if (source.structTypeID != target.structTypeID)
-			return -2;
+    int LynxHandler::copyData(LynxID source, LynxID target, int index)
+    {
+        if (source.structTypeID != target.structTypeID)
+            return -2;
 
-		int sourceIndex = indexFromID(source);
-		if (sourceIndex < 0)
-			return -1;
+        int sourceIndex = indexFromID(source);
+        if (sourceIndex < 0)
+            return -1;
 
-		int targetIndex = indexFromID(target);
-		if (targetIndex < 0)
-			return -1;
+        int targetIndex = indexFromID(target);
+        if (targetIndex < 0)
+            return -1;
 
-		if (index < 0)
-		{
+        if (index < 0)
+        {
             int copySize = _structures.at(targetIndex).getSize()*_structures.at(targetIndex).getIndexingSize();
 
             char* sourcePointer = static_cast<char*>(_structures[sourceIndex].getDataPointer());
-			char* targetPointer = static_cast<char*>(_structures[targetIndex].getDataPointer());
+            char* targetPointer = static_cast<char*>(_structures[targetIndex].getDataPointer());
 
-			for (int i = 0; i < copySize; i++)
-			{
-				targetPointer[i] = sourcePointer[i];
-			}
-		}
-		else
-		{
+            for (int i = 0; i < copySize; i++)
+            {
+                targetPointer[i] = sourcePointer[i];
+            }
+        }
+        else
+        {
             switch (_structures.at(sourceIndex).getStructDefinition()->structItems[index].dataType)
-			{
-			case LynxLib::eInt8:
+            {
+            case LynxLib::eInt8:
                 _structures[targetIndex].setData(index, _structures.at(sourceIndex).getData<int8_t>(index));
-				break;
-			case LynxLib::eUint8:
+                break;
+            case LynxLib::eUint8:
                 _structures[targetIndex].setData(index, _structures.at(sourceIndex).getData<uint8_t>(index));
-				break;
-			case LynxLib::eInt16:
+                break;
+            case LynxLib::eInt16:
                 _structures[targetIndex].setData(index, _structures.at(sourceIndex).getData<int16_t>(index));
-				break;
-			case LynxLib::eUint16:
+                break;
+            case LynxLib::eUint16:
                 _structures[targetIndex].setData(index, _structures.at(sourceIndex).getData<uint16_t>(index));
-				break;
-			case LynxLib::eInt32:
+                break;
+            case LynxLib::eInt32:
                 _structures[targetIndex].setData(index, _structures.at(sourceIndex).getData<int32_t>(index));
-				break;
-			case LynxLib::eUint32:
+                break;
+            case LynxLib::eUint32:
                 _structures[targetIndex].setData(index, _structures.at(sourceIndex).getData<uint32_t>(index));
-				break;
-			case LynxLib::eInt64:
+                break;
+            case LynxLib::eInt64:
                 _structures[targetIndex].setData(index, _structures.at(sourceIndex).getData<int64_t>(index));
-				break;
-			case LynxLib::eUint64:
+                break;
+            case LynxLib::eUint64:
                 _structures[targetIndex].setData(index, _structures.at(sourceIndex).getData<uint64_t>(index));
-				break;
-			case LynxLib::eFloat:
+                break;
+            case LynxLib::eFloat:
                 _structures[targetIndex].setData(index, _structures.at(sourceIndex).getData<float>(index));
-				break;
-			case LynxLib::eDouble:
+                break;
+            case LynxLib::eDouble:
                 _structures[targetIndex].setData(index, _structures.at(sourceIndex).getData<double>(index));
-				break;
-			default:
-				return -1;
-			}
-		}
+                break;
+            default:
+                return -1;
+            }
+        }
 
-		return 0;
-	}
+        return 0;
+    }
 
 //	int LynxHandler::toBuffer(LynxID _lynxID, char * dataBuffer, SendMode sendMode, int subIndex)
 //	{
@@ -611,132 +611,132 @@ namespace LynxLib
 //	}
 
     int LynxHandler::getTranferSize(LynxID _lynxID, int subIndex) const
-	{
-		int index = indexFromID(_lynxID);
+    {
+        int index = indexFromID(_lynxID);
         if(index < 0)
-            return -1;
+            return -10;
 
         return this->_structures.at(index).getTransferSize(subIndex);
-	}
+    }
 
-	LynxList<LynxID> LynxHandler::getIDs()
-	{
+    LynxList<LynxID> LynxHandler::getIDs()
+    {
         if (!this->_structures.count())
-			return LynxList<LynxID>();
+            return LynxList<LynxID>();
 
         LynxList<LynxID> list(this->_structures.count());
 
-		getIDs(list);
+        getIDs(list);
 
-		return list;
-	}
+        return list;
+    }
 
-	void LynxHandler::getIDs(LynxList<LynxID>& list)
-	{
-		list.clear();
+    void LynxHandler::getIDs(LynxList<LynxID>& list)
+    {
+        list.clear();
 
         for (int i = 0; i < list.count(); i++)
-		{
+        {
             list.append(this->_structures.at(i).getID());
-		}
-	}
+        }
+    }
 
-	/*
-	int LynxHandler::getTransferSize(StandardStructIDs internalDatagram)
-	{
-		switch (internalDatagram)
-		{
-		case LynxStructureSpace::eSsInvalidID:
-			return -1;
-		case LynxStructureSpace::eLynxRequest:
-			break;
-		case LynxStructureSpace::eLynxResponse:
-			break;
-		case LynxStructureSpace::eSsEndOfList:
-			break;	
-		}
+    /*
+    int LynxHandler::getTransferSize(StandardStructIDs internalDatagram)
+    {
+        switch (internalDatagram)
+        {
+        case LynxStructureSpace::eSsInvalidID:
+            return -1;
+        case LynxStructureSpace::eLynxRequest:
+            break;
+        case LynxStructureSpace::eLynxResponse:
+            break;
+        case LynxStructureSpace::eSsEndOfList:
+            break;
+        }
 
-		return -1;
-	}
-	*/
+        return -1;
+    }
+    */
 
-	int LynxHandler::newScanResponses()
-	{
-		int temp = 0;
+    int LynxHandler::newScanResponses()
+    {
+        int temp = 0;
 
-		for (int i = 0; i < _availableDevices.count(); i++)
-		{
-			if (_availableDevices.at(i).newDevice)
-			{
-				temp++;
-			}
-		}
+        for (int i = 0; i < _availableDevices.count(); i++)
+        {
+            if (_availableDevices.at(i).newDevice)
+            {
+                temp++;
+            }
+        }
 
-		return temp;
-	}
+        return temp;
+    }
 
-	LynxDeviceInfo LynxHandler::getScanResponse()
-	{
-		LynxDeviceInfo temp = LynxDeviceInfo();
+    LynxDeviceInfo LynxHandler::getScanResponse()
+    {
+        LynxDeviceInfo temp = LynxDeviceInfo();
 
-		for (int i = 0; i < _availableDevices.count(); i++)
-		{
-			if (_availableDevices.at(i).newDevice)
-			{
-				temp = _availableDevices.at(i);
+        for (int i = 0; i < _availableDevices.count(); i++)
+        {
+            if (_availableDevices.at(i).newDevice)
+            {
+                temp = _availableDevices.at(i);
                 _availableDevices[i].newDevice = false;
-				break;
-			}
-		}
+                break;
+            }
+        }
 
-		return temp;
-	}
+        return temp;
+    }
 
-	int LynxHandler::sendScanResponse(char* dataBuffer)
-	{
-		_newScanRequest = false;
+    int LynxHandler::sendScanResponse(char* dataBuffer)
+    {
+        _newScanRequest = false;
 
-		int index = 0;
+        int index = 0;
         dataBuffer[index] = LYNX_INTERNAL_DATAGRAM;
-		index++;
-		dataBuffer[index] = eLynxResponse;
-		index++;
-		dataBuffer[index] = eRqDeviceInfo;
-		index++;
-		
-		for (int i = 0; i < 20; i++)
-		{
-			if ((this->_deviceInfo.deviceName[i] == '\0') || (i == 19))
-			{
-				dataBuffer[index] = '\0';
-				index++;
-				break;
-			}
-			dataBuffer[index] = this->_deviceInfo.deviceName[i];
-			index++;
-		}
+        index++;
+        dataBuffer[index] = eLynxResponse;
+        index++;
+        dataBuffer[index] = eRqDeviceInfo;
+        index++;
+
+        for (int i = 0; i < 20; i++)
+        {
+            if ((this->_deviceInfo.deviceName[i] == '\0') || (i == 19))
+            {
+                dataBuffer[index] = '\0';
+                index++;
+                break;
+            }
+            dataBuffer[index] = this->_deviceInfo.deviceName[i];
+            index++;
+        }
 
         dataBuffer[index] = char(this->_deviceInfo.deviceID);
-		index++;
+        index++;
 
-		char tempVersion[4] = LYNX_VERSION;
-		for (int i = 0; i < 4; i++)
-		{
-			dataBuffer[index] = tempVersion[i];
-			index++;
-		}
+        char tempVersion[4] = LYNX_VERSION;
+        for (int i = 0; i < 4; i++)
+        {
+            dataBuffer[index] = tempVersion[i];
+            index++;
+        }
 
-		char checksum = 0;
-		for (int i = 0; i < index; i++)
-		{
-			checksum += dataBuffer[i];
-		}
+        char checksum = 0;
+        for (int i = 0; i < index; i++)
+        {
+            checksum += dataBuffer[i];
+        }
 
-		dataBuffer[index] = checksum;
-		index++;
+        dataBuffer[index] = checksum;
+        index++;
 
-		return index;
-	}
+        return index;
+    }
 
     bool LynxHandler::isMember(LynxID _lynxID)
     {
@@ -747,132 +747,132 @@ namespace LynxLib
     }
 
     int LynxHandler::indexFromID(LynxID& _lynxID) const
-	{
+    {
         for (int i = 0; i < _structures.count(); i++)
-		{
+        {
             if(_structures.at(i).getID() == _lynxID)
                 return i;
-		}
+        }
 
-		return -1;
-	}
+        return -1;
+    }
 
-	int LynxHandler::handleInternalDatagram(const char * dataBuffer, LynxIpAddress ipAddress)
-	{
-		switch (StandardStructIDs(dataBuffer[1]))
-		{
-		case LynxLib::eLynxRequest:
-			{
-				return this->handleRequest(dataBuffer, ipAddress);
-			}
-		case LynxLib::eLynxResponse:
-			{
-				return this->handleResponse(dataBuffer, ipAddress);
-			}
-		default:
-			return -1;
-		}
-	}
+    int LynxHandler::handleInternalDatagram(const char * dataBuffer, LynxIpAddress ipAddress)
+    {
+        switch (StandardStructIDs(dataBuffer[1]))
+        {
+        case LynxLib::eLynxRequest:
+            {
+                return this->handleRequest(dataBuffer, ipAddress);
+            }
+        case LynxLib::eLynxResponse:
+            {
+                return this->handleResponse(dataBuffer, ipAddress);
+            }
+        default:
+            return -1;
+        }
+    }
 
-	int LynxHandler::handleRequest(const char * dataBuffer, LynxIpAddress ipAddress)
-	{
-		if (dataBuffer[2] == eRqDeviceInfo)
-		{
-			LynxDeviceInfo tempInfo = receiveScanResponse(dataBuffer, ipAddress);
+    int LynxHandler::handleRequest(const char * dataBuffer, LynxIpAddress ipAddress)
+    {
+        if (dataBuffer[2] == eRqDeviceInfo)
+        {
+            LynxDeviceInfo tempInfo = receiveScanResponse(dataBuffer, ipAddress);
 
-			int index = checkAvailableDevices(tempInfo);
+            int index = checkAvailableDevices(tempInfo);
 
-			if (index >= 0)
-			{
-				_newScanRequest = true;
-				return 0;
-			}
-		}
-		return -1;
-	}
+            if (index >= 0)
+            {
+                _newScanRequest = true;
+                return 0;
+            }
+        }
+        return -1;
+    }
 
-	int LynxHandler::handleResponse(const char * dataBuffer, LynxIpAddress ipAddress)
-	{
-		if (dataBuffer[2] == eRqDeviceInfo)
-		{
-			LynxDeviceInfo tempInfo = receiveScanResponse(dataBuffer, ipAddress);
+    int LynxHandler::handleResponse(const char * dataBuffer, LynxIpAddress ipAddress)
+    {
+        if (dataBuffer[2] == eRqDeviceInfo)
+        {
+            LynxDeviceInfo tempInfo = receiveScanResponse(dataBuffer, ipAddress);
 
-			int deviceIndex = checkAvailableDevices(tempInfo);
-			return deviceIndex;
-		}
-		return -1;
-	}
+            int deviceIndex = checkAvailableDevices(tempInfo);
+            return deviceIndex;
+        }
+        return -1;
+    }
 
-	// Checks for matching device in list. 
-	// If match is found: updates info and returns the index of device.
-	// If match is not found: device is added to the list and the index is returned.
-	// If failure: returns -1
-	int LynxHandler::checkAvailableDevices(LynxDeviceInfo& lynxDevice) 
-	{
-		lynxDevice.newDevice = true;
+    // Checks for matching device in list.
+    // If match is found: updates info and returns the index of device.
+    // If match is not found: device is added to the list and the index is returned.
+    // If failure: returns -1
+    int LynxHandler::checkAvailableDevices(LynxDeviceInfo& lynxDevice)
+    {
+        lynxDevice.newDevice = true;
 
-		for (int i = 0; i < this->_availableDevices.count(); i++)
-		{
+        for (int i = 0; i < this->_availableDevices.count(); i++)
+        {
             // char* temp = _availableDevices.at(i).deviceName;
 
-			for (int j = 0; j < 20; j++)
-			{
+            for (int j = 0; j < 20; j++)
+            {
                 if (_availableDevices.at(i).deviceName[j] != lynxDevice.deviceName[j])
-					break;
+                    break;
 
                 if (_availableDevices.at(i).deviceName[j] == '\0') // Device is already in list, update info and return
-				{	
+                {
                     _availableDevices[i] = lynxDevice;
-					return i;
-				}
-			}
-		}
+                    return i;
+                }
+            }
+        }
 
         this->_availableDevices.append(lynxDevice); // Device is not in list, add it
         return (_availableDevices.count() - 1);
-	}
+    }
 
-	LynxDeviceInfo LynxHandler::receiveScanResponse(const char * dataBuffer, LynxIpAddress ipAddress)
-	{
-		LynxDeviceInfo response;
-		int index = 3;
-		for (int i = 0; i < 20; i++)
-		{
-			if ((dataBuffer[index] == '\0') || (i == 19))
-			{
-				response.deviceName[i] = '\0';
-				index ++;
-				break;
-			}
-			response.deviceName[i] = dataBuffer[index];
-			index++;
-		}
+    LynxDeviceInfo LynxHandler::receiveScanResponse(const char * dataBuffer, LynxIpAddress ipAddress)
+    {
+        LynxDeviceInfo response;
+        int index = 3;
+        for (int i = 0; i < 20; i++)
+        {
+            if ((dataBuffer[index] == '\0') || (i == 19))
+            {
+                response.deviceName[i] = '\0';
+                index ++;
+                break;
+            }
+            response.deviceName[i] = dataBuffer[index];
+            index++;
+        }
 
         response.deviceID = uint8_t(dataBuffer[index]);
-		index++;
+        index++;
 
-		for (int i = 0; i < 4; i++)
-		{
-			response.lynxVersion[i] = dataBuffer[index];
-			index++;
-		}
+        for (int i = 0; i < 4; i++)
+        {
+            response.lynxVersion[i] = dataBuffer[index];
+            index++;
+        }
 
-		response.ipAddress = ipAddress;
+        response.ipAddress = ipAddress;
 
-		char checksum = 0;
-		for (int i = 0; i < index; i++)
-		{
-			checksum += dataBuffer[i];
-		}
+        char checksum = 0;
+        for (int i = 0; i < index; i++)
+        {
+            checksum += dataBuffer[i];
+        }
 
-		if (checksum == dataBuffer[index])
-		{
-			return response;
-		}
+        if (checksum == dataBuffer[index])
+        {
+            return response;
+        }
 
-		return LynxDeviceInfo();
+        return LynxDeviceInfo();
 
-	}
+    }
 
 //	int LynxHandler::datagramFromBuffer(const char * dataBuffer)
 //	{
@@ -912,41 +912,41 @@ namespace LynxLib
         return -1;
     }
 
-	StructDefinition::StructDefinition(const char _structName[], const LynxStructMode _structMode, const StructItem * _structItems, int _size)
-		: structName(_structName), structMode(_structMode), structItems(_structItems)
-	{
-		if (_structMode == eArrayMode)
-		{
-			size = _size;
-			transferSize = _size * LynxStructure::checkTransferSize(_structItems[0].dataType);
-		}
-		else if (_size > 0)
-		{
-			transferSize = 0;
-			size = _size;
-			for (int i = 0; i < size; i++)
-			{
-				transferSize += LynxStructure::checkTransferSize(_structItems[i].dataType);
-			}
-		}
-		else
-		{
-			transferSize = 0;
+    StructDefinition::StructDefinition(const char _structName[], const LynxStructMode _structMode, const StructItem * _structItems, int _size)
+        : structName(_structName), structMode(_structMode), structItems(_structItems)
+    {
+        if (_structMode == eArrayMode)
+        {
+            size = _size;
+            transferSize = _size * LynxStructure::checkTransferSize(_structItems[0].dataType);
+        }
+        else if (_size > 0)
+        {
+            transferSize = 0;
+            size = _size;
+            for (int i = 0; i < size; i++)
+            {
+                transferSize += LynxStructure::checkTransferSize(_structItems[i].dataType);
+            }
+        }
+        else
+        {
+            transferSize = 0;
 
-			for (int i = 0; i < 256; i++)
-			{
-				if (_structItems[i].dataType == eEndOfList)
-				{
-					size = i;
-					return;
-				}
+            for (int i = 0; i < 256; i++)
+            {
+                if (_structItems[i].dataType == eEndOfList)
+                {
+                    size = i;
+                    return;
+                }
 
-				transferSize += LynxStructure::checkTransferSize(_structItems[i].dataType);
-			}
+                transferSize += LynxStructure::checkTransferSize(_structItems[i].dataType);
+            }
 
-			transferSize = 0;
-			size = 0;
-		}
-	}
+            transferSize = 0;
+            size = 0;
+        }
+    }
 
 }

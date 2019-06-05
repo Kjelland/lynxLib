@@ -27,7 +27,7 @@
 class NewData
 {
 public:
-	static void onNewUartData(const LynxLib::LynxID& id, int index);
+    static void onNewUartData(const LynxLib::LynxID& id, int index);
 };
 #endif //ARDUINO
 
@@ -61,6 +61,7 @@ public slots:
 // TODO MAGNUS
 // Write here if you need includes
 #define nullptr 0
+#define DATABUFFER_SIZE 100
 #include "DSP28x_Project.h"
 #include   "f2802x_common/include/sci.h"
 #include   "f2802x_common/include/clk.h"
@@ -140,6 +141,7 @@ public:
     // Flushes the internal databuffer
     void flush();
 
+    int errorCode(){return _errorCode;}
 //    int bufferCount() { return _dataBuffer.count(); }
 
 //    int reservedBuffer() { return _dataBuffer.reservedSize(); }
@@ -171,11 +173,15 @@ private:
 
     int _transferBytes = 0;
     int _readSize = 0;
+    int _bytesTransferred = 0;
 
     int _receivedBytes = 0;
     int _sentBytes = 0;
 
-	LynxLib::LynxList<LynxLib::LynxID> _idList;
+    int _errorCode = 0;
+
+
+    LynxLib::LynxList<LynxLib::LynxID> _idList;
 
     LynxLib::LynxHandler* _lynxHandler = NULL;
 
