@@ -8,14 +8,18 @@ Button
     property string color: "grey"
 
     text: "A button"
+    implicitWidth: 100
+    implicitHeight: 45
+    font.bold: true
+    font.pixelSize: height/4
+
     hoverEnabled: true
     background:
         Rectangle
         {
             id: rect
-            color: parent.color
-            implicitWidth: 100
-            implicitHeight: 45
+            anchors.fill: parent
+            color: parent.color           
             border.width: parent.hovered ? 3 : 1
             border.color: Qt.darker(parent.color, 1.5)
             radius: height > width ? width/5 : height/5

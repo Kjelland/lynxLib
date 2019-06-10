@@ -56,7 +56,8 @@ Window
 
         for(var i = 0; i < listModel.count; i++)
         {
-            structInfo.addStructMember(listModel.get(i).textIn, listModel.get(i).enumTextIn, listModel.get(i).validIn)
+            // console .log(typeList.get(i).text);
+            structInfo.addStructMember(listModel.get(i).textIn, listModel.get(i).enumTextIn, typeList.get(listModel.get(i).enumIndexIn).text, listModel.get(i).validIn)
         }
 
     }
@@ -252,6 +253,7 @@ Window
 
         MyButton
         {
+            // width: 130
             text: qsTr("Save")
             color: bottomRow.buttonColor
             enabled: backEnd.pathSelected
@@ -265,6 +267,7 @@ Window
 
         MyButton
         {
+            // width: 130
             text: qsTr("Select Folder")
             color: bottomRow.buttonColor
             onClicked: savePathDialog.visible = true
@@ -336,6 +339,21 @@ Window
         }
 
         visible: false
+    }
+
+    ListModel
+    {
+        id: typeList
+        ListElement { text: qsTr("int8_t") }
+        ListElement { text: qsTr("uint8_t") }
+        ListElement { text: qsTr("int16_t") }
+        ListElement { text: qsTr("uint16_t") }
+        ListElement { text: qsTr("int32_t") }
+        ListElement { text: qsTr("uint32_t") }
+        ListElement { text: qsTr("int64_t") }
+        ListElement { text: qsTr("uint64_t") }
+        ListElement { text: qsTr("float") }
+        ListElement { text: qsTr("double") }
     }
 
 }

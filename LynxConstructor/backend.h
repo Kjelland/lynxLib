@@ -14,9 +14,10 @@ struct TextInfo
 struct TextTypeInfo : public TextInfo
 {
     QString type = "";
+    QString type_t = "";
 
     TextTypeInfo(){}
-    TextTypeInfo(QString _text, QString _type, bool _valid){ text = _text; type = _type; valid = _valid; }
+    TextTypeInfo(QString _text, QString _type, QString _type_t, bool _valid){ text = _text; type = _type; type_t = _type_t; valid = _valid; }
 };
 
 //-----------------------------------------------------------------
@@ -46,7 +47,7 @@ signals:
 public slots:
     void setStructName(QString text, bool valid);
     void setStructId(QString text, bool valid);
-    void addStructMember(QString text, QString type, bool valid);
+    void addStructMember(QString text, QString type, QString type_t, bool valid);
     void clear() { _structMembers.clear(); }
 
 };

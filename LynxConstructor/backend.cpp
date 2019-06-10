@@ -37,9 +37,9 @@ void StructInfo::setStructId(QString text, bool valid)
     _structId.valid = valid;
 }
 
-void StructInfo::addStructMember(QString text, QString type, bool valid)
+void StructInfo::addStructMember(QString text, QString type, QString type_t, bool valid)
 {
-    _structMembers.append(TextTypeInfo(text, type, valid));
+    _structMembers.append(TextTypeInfo(text, type, type_t, valid));
 }
 
 
@@ -406,6 +406,37 @@ void BackEnd::saveStruct(StructInfo* structInfo)
     file.write(temp.toLatin1());
 
 
+    //------------- Wrapper -----------------
+    temp = "struct " + StructName +  "Wrapper\r\n{\r\n";
+    file.write(temp.toLatin1());
+
+    temp = "\t" + StructName +  "Wrapper() {} \r\n";
+    file.write(temp.toLatin1());
+
+    temp = "\t" + StructName +  "Wrapper(LynxHandler* lynxHandler, const LynxID& lynxID) { this->connect(lynxHandler, lynxID); } \r\n\r\n";
+    file.write(temp.toLatin1());
+
+    temp = "\tvoid connect(LynxHandler* lynxHandler, const LynxID& lynxID)\r\n\t{\r\n";
+    file.write(temp.toLatin1());
+
+    for (int i = 0; i < structInfo->memberCount(); i++)
+    {
+        temp = "\t\tvar_" + structInfo->structMember(i)->text + ".connect(lynxHandler, lynxID, " + structInfo->structMember(i)->text + ");\r\n";
+        file.write(temp.toLatin1());
+    }
+
+    temp = "\t}\r\n\r\n";
+    file.write(temp.toLatin1());
+
+    for (int i = 0; i < structInfo->memberCount(); i++)
+    {
+        temp = "\tLynxWrapperElement<" + structInfo->structMember(i)->type_t + "> var_" + structInfo->structMember(i)->text + ";\r\n";
+        file.write(temp.toLatin1());
+    }
+
+    temp = "};\r\n\r\n";
+    file.write(temp.toLatin1());
+
     //--------------- end -------------------
     temp = "#endif // " + STRUCT_NAME + "_STRUCT";
     file.write(temp.toLatin1());
@@ -462,6 +493,7 @@ void BackEnd::openPathSelected(QString path)
         "Float",
         "Double"
     };
+
 
     // int currentItem = 0;
     int typeIndex = 0;
