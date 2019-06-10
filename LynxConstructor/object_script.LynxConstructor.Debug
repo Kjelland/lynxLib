@@ -1,0 +1,10 @@
+debug/backend.o
+debug/main.o
+debug/MyTextField_qml.o
+debug/CrossSquare_qml.o
+debug/MyButton_qml.o
+debug/MyComboBox_qml.o
+debug/main_qml.o
+debug/ElementListItem_qml.o
+debug/qmlcache_loader.o
+debug/moc_backend.o

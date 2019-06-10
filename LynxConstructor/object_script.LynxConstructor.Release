@@ -1,0 +1,10 @@
+release/backend.o
+release/main.o
+release/MyTextField_qml.o
+release/CrossSquare_qml.o
+release/MyButton_qml.o
+release/MyComboBox_qml.o
+release/main_qml.o
+release/ElementListItem_qml.o
+release/qmlcache_loader.o
+release/moc_backend.o
