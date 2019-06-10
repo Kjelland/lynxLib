@@ -1,16 +1,10 @@
 //-------------------------------------------------------------------------------------------
-//------------------------------------- Version 1.0.1.2-------------------------------------
+//------------------------------------- Version 1.0.1.2 -------------------------------------
 //-------------------------------------------------------------------------------------------
 
 #pragma once
 
-#ifndef NULL
-#ifdef TI
-#define NULL 0
-#else
-#define NULL nullptr
-#endif // !TI
-#endif // !NULL
+
 
 #include "LynxStructure.h"
 
@@ -27,7 +21,7 @@
 class NewData
 {
 public:
-    static void onNewUartData(const LynxLib::LynxID& id, int index);
+	static void onNewUartData(const LynxLib::LynxID& id, int index);
 };
 #endif //ARDUINO
 
@@ -36,16 +30,18 @@ public:
 #include <QtSerialPort/QSerialPortInfo>
 // #include <QDebug>
 
+
+
 class UartHandler;
 
 class InterruptObject : public QObject
 {
     Q_OBJECT
 
-    UartHandler* _handler = NULL;
+    UartHandler* _handler = LYNX_NULL;
 
 public:
-    explicit InterruptObject(UartHandler* handler, QObject* parent = NULL);
+    explicit InterruptObject(UartHandler* handler, QObject* parent = LYNX_NULL);
     void newData(const LynxLib::LynxID& id, int index);
 
 signals:
@@ -60,8 +56,6 @@ public slots:
 #ifdef TI
 // TODO MAGNUS
 // Write here if you need includes
-#define nullptr 0
-#define DATABUFFER_SIZE 100
 #include "DSP28x_Project.h"
 #include   "f2802x_common/include/sci.h"
 #include   "f2802x_common/include/clk.h"
@@ -127,7 +121,7 @@ public:
 //    char bufferAt(int index);
 
     // Returns number of communication errors since strtup
-    int errorCount() { return _errorCounter; }
+    int errorCount() const { return _errorList.count(); }
 
     // Connect to lynxhandler
     void connectToLynx(LynxLib::LynxHandler* lynxHandler) { _lynxHandler = lynxHandler; }
@@ -141,10 +135,11 @@ public:
     // Flushes the internal databuffer
     void flush();
 
-    int errorCode(){return _errorCode;}
 //    int bufferCount() { return _dataBuffer.count(); }
 
 //    int reservedBuffer() { return _dataBuffer.reservedSize(); }
+
+    LynxLib::LynxList<int> getErrorList();
 
 private:
     // Reads a single character from serial and returns it
@@ -166,6 +161,8 @@ private:
     LynxLib::LynxList<char> _readBuffer;
     LynxLib::LynxList<char> _writeBuffer;
 
+    LynxLib::LynxRingBuffer<int> _errorList = LynxLib::LynxRingBuffer<int>(10, LynxLib::LynxRingBuffer<int>::eAllowOverflow);
+
     bool _open = false;
     LynxLib::LynxID _tempID;
     int _lynxIndex;
@@ -173,17 +170,13 @@ private:
 
     int _transferBytes = 0;
     int _readSize = 0;
-    int _bytesTransferred = 0;
 
     int _receivedBytes = 0;
     int _sentBytes = 0;
 
-    int _errorCode = 0;
+	LynxLib::LynxList<LynxLib::LynxID> _idList;
 
-
-    LynxLib::LynxList<LynxLib::LynxID> _idList;
-
-    LynxLib::LynxHandler* _lynxHandler = NULL;
+    LynxLib::LynxHandler* _lynxHandler = LYNX_NULL;
 
 #ifdef QT_LYNX
 public:
@@ -192,7 +185,7 @@ public:
     // void onNewData(BackEnd* target);
     void connectNewDataInterrupt(QObject* targetObject);
 private:
-    // BackEnd* _backEnd = NULL;
+    // BackEnd* _backEnd = LYNX_NULL;
     QSerialPort serialPort;
 
     InterruptObject _interruptObject;
