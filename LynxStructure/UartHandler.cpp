@@ -403,10 +403,10 @@ UartHandler::UartHandler()
     // Write here if you need something in the constructor
 
     // Clear buffer
-    for(int i = 0; i < DATABUFFER_SIZE; i++)
-    {
-        _dataBuffer[i] = 0;
-    }
+//    for(int i = 0; i < DATABUFFER_SIZE; i++)
+//    {
+//        _dataBuffer[i] = 0;
+//    }
     rxBuffer.init(DATABUFFER_SIZE);
     txBuffer.init(DATABUFFER_SIZE);
 }
@@ -445,7 +445,7 @@ bool UartHandler::open(int port, int baudRate)
     //SCI_enableLoopBack(sciHandle);
 
     // SCI BRR = LSPCLK/(SCI BAUDx8) - 1
-    SCI_setBaudRate(sciHandle, SCI_BaudRate_9_6_kBaud);
+    SCI_setBaudRate(sciHandle, SCI_BaudRate_e(baudRate));
 
     SCI_enable(sciHandle);
     //
@@ -491,7 +491,7 @@ char UartHandler::read()
     return rxBuffer.read();
 }
 
-int UartHandler::read(char* buffer, int size)
+int UartHandler::read(LynxLib::LynxList<char>& buffer, int size)
 {
     // TODO MAGNUS
     // Read "size" number of bytes from the serial port and put them in "buffer".
@@ -501,7 +501,7 @@ int UartHandler::read(char* buffer, int size)
     return rxBuffer.read(buffer,size);
 }
 
-int UartHandler::write(const char* buffer, int size)
+int UartHandler::write(const LynxLib::LynxList<char>& buffer, int size)
 {
     // TODO MAGNUS
     // Write "size" number of bytes from "buffer" to the serial port.
@@ -510,9 +510,9 @@ int UartHandler::write(const char* buffer, int size)
     if(!_open)
            return -1;
 
-        txBuffer.write(buffer, size);
+    txBuffer.write(&buffer.at(0), size);
 
-    return true;
+    return size;
 }
 
 int UartHandler::bytesAvailable()

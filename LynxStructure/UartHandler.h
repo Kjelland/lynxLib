@@ -56,6 +56,7 @@ public slots:
 #ifdef TI
 // TODO MAGNUS
 // Write here if you need includes
+#define DATABUFFER_SIZE 100
 #include "DSP28x_Project.h"
 #include   "f2802x_common/include/sci.h"
 #include   "f2802x_common/include/clk.h"
@@ -65,15 +66,6 @@ public:
     static void onNewUartData(const LynxLib::LynxID& id,int index);
 };
 #endif // TI
-
-
-
-// #include "RingBuffer.h"
-
-// #define DATABUFFER_SIZE 100
-#define REMOTE_ID 2
-
-// #define LYNX_DEBUG
 
 enum E_State
 {
