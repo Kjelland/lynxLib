@@ -825,7 +825,7 @@ namespace LynxLib
 
 		void init(int nStructs = 0);
 
-        // Adds a structure with the definition provided to the handler's structure list
+        /// Adds a structure with the definition provided to the handler's structure list
         // Returns a unique LynxID that can be used to interact with the structure
 		LynxID addStructure(uint8_t _structType, uint8_t _structInstance, const StructDefinition& _structDefinition);
 

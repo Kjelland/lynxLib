@@ -578,7 +578,7 @@ void UartHandler::update()
             if(_shuffleBytes)
             {
                 shuffleCount++;
-                _readBuffer[0] = _readBuffer.at(0);
+                _readBuffer[0] = _readBuffer.at(1);
                 _readBuffer[1] = _readBuffer.at(2);
                 _readBuffer[2] = read();
                 _receivedBytes++;

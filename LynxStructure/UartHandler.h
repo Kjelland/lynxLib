@@ -127,6 +127,11 @@ public:
     // Flushes the internal databuffer
     void flush();
 
+    int receiveBufferCount() const{return _readBuffer.count();}
+    int sendBufferCount() const{return _writeBuffer.count();}
+
+    char receiveBufferAt(int index) const{return _readBuffer.at(index);}
+    char sendBufferAt(int index) const{return _writeBuffer.at(index);}
 //    int bufferCount() { return _dataBuffer.count(); }
 
 //    int reservedBuffer() { return _dataBuffer.reservedSize(); }
