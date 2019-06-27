@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------
-//------------------------------------- Version 1.0.1.2 -------------------------------------
+//------------------------------------- Version 1.0.1.3 -------------------------------------
 //-------------------------------------------------------------------------------------------
 
 #include "UartHandler.h"
@@ -7,19 +7,10 @@
 #ifdef ARDUINO
 UartHandler::UartHandler()
 {
-    for (int i = 0; i < DATABUFFER_SIZE; i++)
-    {
-        _dataBuffer[i] = 0;
-    }
 }
 
 UartHandler::UartHandler(LynxLib::LynxHandler* lynxHandler)
 {
-	for (int i = 0; i < DATABUFFER_SIZE; i++)
-	{
-		_dataBuffer[i] = 0;
-	}
-
 	_lynxHandler = lynxHandler;
 }
 
@@ -130,29 +121,47 @@ char UartHandler::read()
     return 0;
 }
 
-int UartHandler::read(char* buffer, int size)
+int UartHandler::read(LynxLib::LynxList<char>& buffer, int size)
 {
     if (!_open)
         return -1;
 
+	buffer.reserveAndCopy(size);
+
     switch (this->_port)
     {
     case 0:
-    {
-        return Serial.readBytes(buffer, size);
-    }
+	{
+		for (int i = 0; i < size; i++)
+		{
+			buffer.append(Serial.read());
+		}
+		return size;
+	}
     case 1:
     {
-        return Serial1.readBytes(buffer, size);
+		for (int i = 0; i < size; i++)
+		{
+			buffer.append(Serial1.read());
+		}
+		return size;
     }
-#ifdef ARDUNO_MEGA
+#ifdef ARDUINO_MEGA
     case 2:
     {
-        return Serial2.readBytes(buffer, size);
+		for (int i = 0; i < size; i++)
+		{
+			buffer.append(Serial2.read());
+	}
+		return size;
     }
     case 3:
     {
-        return Serial3.readBytes(buffer, size);
+		for (int i = 0; i < size; i++)
+		{
+			buffer.append(Serial3.read());
+		}
+		return size;
     }
 #endif // ARDUNO_MEGA
     default:
@@ -162,8 +171,10 @@ int UartHandler::read(char* buffer, int size)
     return -1;
 }
 
-int UartHandler::write(const char* buffer, int size)
+int UartHandler::write(const LynxLib::LynxList<char>& buffer)
 {
+	// buffer.reserveAndCopy(buffer.count());
+
     if (!_open)
         return -1;
 
@@ -171,20 +182,20 @@ int UartHandler::write(const char* buffer, int size)
     {
     case 0:
     {
-        return Serial.write(reinterpret_cast<const uint8_t*>(buffer), size);
+        return Serial.write(&buffer.at(0), buffer.count());
     }
     case 1:
     {
-        return Serial1.write(reinterpret_cast<const uint8_t*>(buffer), size);
+        return Serial1.write(&buffer.at(0), buffer.count());
     }
 #ifdef ARDUINO_MEGA
     case 2:
     {
-        return Serial2.write(reinterpret_cast<const uint8_t*>(buffer), size);
+        return Serial2.write(&buffer.at(0), buffer.count());
     }
     case 3:
     {
-        return Serial3.write(reinterpret_cast<const uint8_t*>(buffer), size);
+        return Serial3.write(&buffer.at(0), buffer.count());
     }
 #endif // ARDUINO_MEGA
     default:
@@ -572,6 +583,9 @@ void UartHandler::update()
 
     if(_state == eScanning)
     {
+		if (this->bytesAvailable() < 1)
+			return;
+
         int shuffleCount = 0;
         do
         {
@@ -596,16 +610,32 @@ void UartHandler::update()
             _tempID.structTypeID = static_cast<uint8_t>(_readBuffer.at(1));
             _tempID.structInstanceID = static_cast<uint8_t>(_readBuffer.at(2));
 
-            if(!_lynxHandler->isMember(_tempID))
+            if(_lynxHandler->isMember(_tempID))
+            {
+                _state = eIndexing;
+            }
+            else if(_tempID.deviceID == static_cast<uint8_t>(LYNX_INTERNAL_DATAGRAM))
+            {
+                _readSize = _lynxHandler->getTransferSize(_tempID);
+                if(_readSize > 0)
+                {
+                    _readSize = _readSize + LYNX_CHECKSUM_BYTES;
+                    _state = eReading;
+                }
+                else
+                {
+                    _errorList.write(-11);
+                    _shuffleBytes = true;
+                    _errorCounter++;
+                }
+            }
+            else
             {
                 _errorList.write(-11);
                 _shuffleBytes = true;
                 _errorCounter++;
-                _state = eIdle;
-                return;
-            }
-
-            _state = eIndexing;
+			}
+            
         }while ((this->bytesAvailable() > 0) && _shuffleBytes);
     }
 
@@ -618,7 +648,7 @@ void UartHandler::update()
 
         _lynxIndex = (int(_readBuffer.at(LYNX_ID_BYTES)) & int(0xFF)) | ((int(_readBuffer.at(LYNX_ID_BYTES + 1)) & int(0xFF)) << 8);
 
-        _readSize = _lynxHandler->getTranferSize(_tempID, _lynxIndex - 1);
+        _readSize = _lynxHandler->getTransferSize(_tempID, _lynxIndex - 1);
 
         if(_readSize <= 0)
         {
@@ -696,5 +726,50 @@ LynxLib::LynxList<int> UartHandler::getErrorList()
     }
 
     return errorList;
+}
+
+int UartHandler::sendDirect(const char* data, int size)
+{
+    LynxLib::LynxList<char> temp(data, size);
+    return this->write(temp);
+}
+
+int UartHandler::sendString(const LynxLib::LynxString & str)
+{
+	if (!_open)
+        return -20;
+
+    if(str.count() < 1)
+        return -2;
+
+    _writeBuffer.clear();
+    _writeBuffer.append(LYNX_INTERNAL_DATAGRAM);
+    _writeBuffer.append(static_cast<char>(LynxLib::eLynxString));
+
+    int writeSize = (str.count() > 254) ? 255 : (str.count() + 1);
+
+    _writeBuffer.append(static_cast<char>(writeSize));
+    _writeBuffer.append(str.toCstr(), writeSize - 1);
+    _writeBuffer.append('\0');
+
+    char checksum = 0;
+    for (int i = 0; i < _writeBuffer.count(); i++)
+    {
+        checksum += _writeBuffer.at(i);
+    }
+    _writeBuffer.append(checksum);
+
+    return this->write(_writeBuffer);
+}
+
+int UartHandler::sendString(const char * cstr, int size)
+{
+    LynxLib::LynxString temp(cstr, size);
+    return this->sendString(temp);
+}
+
+int UartHandler::getError()
+{
+	return _errorList.read();
 }
 

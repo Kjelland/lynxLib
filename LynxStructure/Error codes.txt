@@ -1,5 +1,6 @@
 triggered by writeVarToBuffer
 -10 - variable could not be written to buffer because the type does not exist
+-22 - datatype is not supported by operating system
 
 triggered by fromBuffer
 -12 - dataBuffer is too small to contain lynxID and subIndex

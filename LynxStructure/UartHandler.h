@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------
-//------------------------------------- Version 1.0.1.2 -------------------------------------
+//------------------------------------- Version 1.0.1.3 -------------------------------------
 //-------------------------------------------------------------------------------------------
 
 #pragma once
@@ -100,8 +100,14 @@ public:
     // If subindex is not entered or less than zero all variables will be sent, otherwise only the variable with the specified subindex will be sent.
     int send(const LynxLib::LynxID& lynxID, int subIndex = -1);
 
-    // Sends a single variable to the serial port
-    // int send(const LynxLib::LynxID& lynxID, int subIndex);
+    // Sends data directly to the serial port
+    int sendDirect(const char* data, int size);
+
+    // Send a string
+    int sendString(const LynxLib::LynxString & str);
+
+    // Send a string
+    int sendString(const char * cstr, int size = -1);
 
     // Returns true if new data has been received and added to lynx
     bool newData();
@@ -127,6 +133,9 @@ public:
     // Flushes the internal databuffer
     void flush();
 
+	// Gets the last received ID
+	const LynxLib::LynxID& lastReceivedId() const { return _tempID; }
+
     int receiveBufferCount() const{return _readBuffer.count();}
     int sendBufferCount() const{return _writeBuffer.count();}
 
@@ -137,6 +146,7 @@ public:
 //    int reservedBuffer() { return _dataBuffer.reservedSize(); }
 
     LynxLib::LynxList<int> getErrorList();
+	int getError();
 
 private:
     // Reads a single character from serial and returns it

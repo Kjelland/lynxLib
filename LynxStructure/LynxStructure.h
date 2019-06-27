@@ -1,5 +1,5 @@
 //-------------------------------------------------------------------------------------------------------------------------------
-//---------------------------------------------------- Version 1.4.0.0 ----------------------------------------------------------
+//---------------------------------------------------- Version 1.4.0.2 ----------------------------------------------------------
 //-------------------------------------------------------------------------------------------------------------------------------
 
 #ifndef LYNX_STRUCTURE
@@ -14,7 +14,8 @@
 #endif // !LYNX_NULL
 
 #include <stdint.h>
-#define LYNX_VERSION { 1, 4, 0, 0 }
+#include <math.h>
+#define LYNX_VERSION { 1, 4, 0, 2 }
 
 #define LYNX_INTERNAL_DATAGRAM char(255)
 
@@ -60,11 +61,12 @@ namespace LynxLib
 		eArrayMode
 	};
 
-	enum StandardStructIDs
+    enum InternalStructIDs
 	{
 		eSsInvalidID = 0,
 		eLynxRequest,
 		eLynxResponse,
+        eLynxString,
 		eSsEndOfList
 	};
 
@@ -90,24 +92,18 @@ namespace LynxLib
 			_reservedSize = 0;
 		}
 
-		LynxList(int size)
+		LynxList(int size) : LynxList()
 		{
-			_list = LYNX_NULL;
 			this->reserve(size);
 		}
 
-		LynxList(const LynxList<T>& list)
-		{
-			_list = LYNX_NULL;
+		LynxList(const LynxList<T>& list) : LynxList()
+		{ 
 			*this = list;
 		}
 
-		LynxList(const T* source, int size)
+		LynxList(const T* source, int size) : LynxList()
 		{
-			_list = LYNX_NULL;
-			_count = 0;
-			_reservedSize = 0;
-
 			this->append(source, size);
 		}
 
@@ -120,10 +116,13 @@ namespace LynxLib
 			}
 		}
 
-		LynxList<T>& operator = (const LynxList<T>& list)
+		LynxList<T>& operator = (const LynxList<T>& other)
 		{
+			if (this == &other)
+				return *this;
+
 			this->clear();
-			this->append(list);
+			this->append(other);
 
 			return *this;
 		}
@@ -165,10 +164,11 @@ namespace LynxLib
 		// Non-destructive reserve. Allocates new memory and copies "copysize" number of old data.
 		// Copies all old data if "copySize" is negative or not in argument list.
 		// Will not shrink if size is less than reserved size!
-		void reserveAndCopy(int size, int copySize = -1)
+		// Returns true if new reserve was neccessary, otherwise false
+		bool reserveAndCopy(int size, int copySize = -1)
 		{
 			if (_reservedSize >= size)
-				return;
+				return false;
 
 			_reservedSize = size;
 
@@ -195,6 +195,7 @@ namespace LynxLib
 				_list = new T[_reservedSize];
 			}
 
+			return true;
 		}
 
 		// Adds a new item at the end of the list and populates it with "item".
@@ -288,6 +289,164 @@ namespace LynxLib
 
 		int _count;
 		int _reservedSize;
+	};
+
+	//---------------------------------------------------------------------------------------------------------------------------
+	//-------------------------------------------------- LynxString -------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------------------------------------
+
+	class LynxString : public LynxList<char>
+	{
+		int checkCstringSize(const char * cstring) const;
+		void completeClear() { LynxList::clear(); }
+
+		//template <class T>
+		//static LynxString & numToStr(LynxString & str, T num, int base)
+		//{
+		//	if (num == 0)
+		//	{ 
+		//		str = '0';
+		//		return str;
+		//	}
+
+		//	T tmp = num;
+		//	int charsNeeded = 0;
+
+		//	while (tmp != 0)
+		//	{
+		//		tmp /= base;
+		//		charsNeeded++;
+		//	}
+
+		//	bool negNum;
+		//	if (num < 0)
+		//	{
+		//		negNum = true;
+		//		charsNeeded++;
+		//		tmp = -num;
+		//	}
+		//	else
+		//	{
+		//		negNum = false;
+		//		tmp = num;
+		//	}
+
+		//	str.reserveAndCopy(charsNeeded, 0);
+		//	// str.clear();
+		//	// LynxString tmpString(charsNeeded);
+
+		//	while (tmp != 0)
+		//	{
+		//		str += static_cast<char>(tmp % base) + '0';
+		//		tmp /= base;
+		//	}
+
+		//	if (negNum)
+		//		str.append('-');
+
+		//	str.reverse();
+
+		//	return str;
+		//}
+
+		//template <class T>
+		//static LynxString & fNumToStr(LynxString & str, T num, int precision)
+		//{
+		//	bool sign = num < 0; // negative = true, positive = false
+
+		//	T iPart = fabs(trunc(num));
+		//	T fPart = fabs(num) - iPart;
+
+		//	LynxString iStr = LynxString::number(static_cast<long long>(iPart));
+
+		//	int fSize = precision - iStr.count();
+
+		//	LynxString fStr;  
+		//	if (fSize >= 1)
+		//	{ 
+		//		fStr.reserve(fSize);
+		//		while (fStr.count() < fSize)
+		//		{
+		//			fPart *= 10.0;
+		//			fStr += LynxString::number(static_cast<int>(fPart));
+		//			fPart = fPart - static_cast<int>(fPart);
+		//		}
+		//	}
+
+		//	str.reserve(iStr.count() + fStr.count() + 2);
+
+		//	if (sign)
+		//		str += '-';
+
+		//	str += iStr;
+		//	if(fSize >= 1)
+		//	{
+		//		str += '.';
+		//		str += fStr;
+		//	}
+		//	return str;
+		//}
+
+	public:
+		LynxString();
+		LynxString(int size);
+		LynxString(char character);
+		LynxString(const char * cstring, int size = 0);
+
+		const LynxString & operator += (char character) { this->append(character); return *this; }
+		const LynxString & operator += (const char * cstring) { this->append(cstring); return *this; }
+		const LynxString & operator += (const LynxString & other) { this->append(other); return *this; }
+
+		LynxString operator + (char character)
+		{
+			LynxString newString(this->count() + 1);
+			newString = *this;
+			newString.append(character);
+			return newString;
+		}
+
+		LynxString operator + (const char * cstring)
+		{
+			int cstrSize = this->checkCstringSize(cstring);
+			if (cstrSize < 1)
+				return *this;
+
+			LynxString newString(this->count() + cstrSize);
+			newString = *this;
+			newString.append(cstring);
+			return newString;
+		}
+
+		LynxString operator + (const LynxString & other)
+		{
+			LynxString newString(this->count() + other.count());
+			newString = *this;
+			newString.append(other);
+			return newString;
+		}
+
+		void append(char character);
+		void append(const char * cstring, int size = 0);
+		void append(const LynxString & other);
+
+	//	static LynxString number(int num, int base = 10) { LynxString tmp; return LynxString::numToStr<int>(tmp, num, base); }
+	//  static LynxString number(long long num, int base = 10) { LynxString tmp; return LynxString::numToStr<long long>(tmp, num, base); }
+	//  static LynxString number(float num, int precision = 5) { LynxString tmp; return LynxString::fNumToStr<float>(tmp, num, precision); }
+	//  static LynxString number(double num, int precision = 5) { LynxString tmp; return LynxString::fNumToStr<double>(tmp, num, precision); }
+
+        const char * toCstr() const { return &this->at(0); }
+
+		const LynxString & reverse();
+
+		void remove(int index) { if(index < this->count()) LynxList::remove(index);  }
+
+		int count() const { return (LynxList::count() < 1) ? 0 : (LynxList::count() - 1); }
+
+		void reserve(int size);
+
+		bool reserveAndCopy(int size, int copySize = -1);
+
+		void clear() { LynxList::clear(); LynxList::append('\0'); }
 	};
 
 	//---------------------------------------------------------------------------------------------------------------------------
@@ -736,7 +895,7 @@ namespace LynxLib
 		template <class T>
 		void setData(int subIndex, const T& dataIn)
 		{
-			*(reinterpret_cast<T*>(_dataPointerList.at(subIndex))) = dataIn;
+			*(reinterpret_cast<T*>(_dataPointerList[subIndex])) = dataIn;
 		}
 
 		// Returns the boolean state of the bits in bitmask
@@ -825,7 +984,7 @@ namespace LynxLib
 
 		void init(int nStructs = 0);
 
-        /// Adds a structure with the definition provided to the handler's structure list
+        // Adds a structure with the definition provided to the handler's structure list
         // Returns a unique LynxID that can be used to interact with the structure
 		LynxID addStructure(uint8_t _structType, uint8_t _structInstance, const StructDefinition& _structDefinition);
 
@@ -903,7 +1062,7 @@ namespace LynxLib
         // If subIndex is less than zero, the total size of all elements is returned, otherwise only the variable pointed to by subIndex
         // Identification and checksum bytes are not included
         // Returns a negative error code if feilure
-		int getTranferSize(const LynxID& lynxID, int subIndex = -1) const;
+		int getTransferSize(const LynxID& lynxID, int subIndex = -1) const;
 
         // Returns the local storage size of the struct pointed to by lynxID (sizeof equivalent)
         // If subIndex is less than zero, the total size of all elements is returned, otherwise only the variable pointed to by subIndex
@@ -949,10 +1108,15 @@ namespace LynxLib
         // Returns zero if success, error code if faliure
         int clear(const LynxID & lynxID);
 
+        // Gets last received string
+        const LynxString & getReceivedString() const { return _receiveString; }
+
 	private:
 		LynxDeviceInfo _deviceInfo;
 
 		bool _newScanRequest;
+
+        LynxString _receiveString;
 
 		LynxList<LynxDeviceInfo> _availableDevices;
 
@@ -962,11 +1126,15 @@ namespace LynxLib
 
 		int indexFromID(const LynxID& lynxID) const;
 
-		int handleInternalDatagram(const char* dataBuffer, LynxIpAddress ipAddress);
+        int handleInternalDatagram(const LynxList<char> & dataBuffer, LynxIpAddress ipAddress);
 
 		int handleRequest(const char* dataBuffer, LynxIpAddress ipAddress);
 
 		int handleResponse(const char* dataBuffer, LynxIpAddress ipAddress);
+
+        // Receives a string from the databuffer
+        // Returns size of received data
+        int receiveString(const LynxList<char> & dataBuffer);
 
 		LynxDeviceInfo receiveScanResponse(const char* dataBuffer, LynxIpAddress ipAddress);
 
