@@ -281,7 +281,7 @@ InterruptObject::InterruptObject(UartHandler* handler, QObject* parent) : QObjec
 
 void InterruptObject::update()
 {
-    if(_handler == nullptr)
+    if(_handler == LYNX_NULL)
         return;
 
     _handler->update();
@@ -512,7 +512,7 @@ int UartHandler::read(LynxLib::LynxList<char>& buffer, int size)
     return rxBuffer.read(buffer,size);
 }
 
-int UartHandler::write(const LynxLib::LynxList<char>& buffer, int size)
+int UartHandler::write(const LynxLib::LynxList<char>& buffer)
 {
     // TODO MAGNUS
     // Write "size" number of bytes from "buffer" to the serial port.
@@ -521,9 +521,9 @@ int UartHandler::write(const LynxLib::LynxList<char>& buffer, int size)
     if(!_open)
            return -1;
 
-    txBuffer.write(&buffer.at(0), size);
+    txBuffer.write(&buffer.at(0), buffer.count());
 
-    return size;
+    return buffer.count();
 }
 
 int UartHandler::bytesAvailable()
@@ -557,7 +557,7 @@ void UartHandler::update(UartHandler* uartHandler)
 void UartHandler::update()
 {
 
-    if (!_open || (_lynxHandler == nullptr))
+    if (!_open || (_lynxHandler == LYNX_NULL))
     {
         _errorList.write(-20);
         return;
@@ -685,7 +685,7 @@ void UartHandler::update()
 
 int UartHandler::send(const LynxLib::LynxID & _lynxID, int subIndex)
 {
-    if(!_open || (_lynxHandler == nullptr))
+    if(!_open || (_lynxHandler == LYNX_NULL))
     {
         _errorList.write(-20);
         return -20;

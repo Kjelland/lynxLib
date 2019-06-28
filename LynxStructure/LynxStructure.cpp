@@ -241,7 +241,7 @@ namespace LynxLib
 
 		switch (_structDefinition->structMode)
 		{
-			case LynxStructMode::eArrayMode:
+            case eArrayMode:
 			{
 				_dataPointerList.reserve(_structDefinition->size);
 
@@ -253,7 +253,7 @@ namespace LynxLib
 				}
 			}
 				break;
-			case LynxStructMode::eStructureMode:
+            case eStructureMode:
 			{
 				_dataPointerList.reserve(_structDefinition->size);
 

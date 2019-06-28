@@ -13,9 +13,14 @@
 #endif // TI
 #endif // !LYNX_NULL
 
+#ifdef TI
+#include "DSP28x_Project.h"
+typedef int16_t int8_t;
+#endif //TI
+
 #include <stdint.h>
 #include <math.h>
-#define LYNX_VERSION { 1, 4, 0, 2 }
+#define LYNX_VERSION { 1, 4, 0, 3 }
 
 #define LYNX_INTERNAL_DATAGRAM char(255)
 
@@ -496,7 +501,7 @@ namespace LynxLib
 
 	struct StructItem
 	{
-		StructItem() { name = LYNX_NULL; dataType = LynxDataType::eEndOfList; }
+        StructItem() { name = LYNX_NULL; dataType = eEndOfList; }
 		StructItem(const char* _name, LynxDataType _dataType)
 			: name(_name), dataType(_dataType) {}
 		const char* name;
@@ -730,7 +735,17 @@ namespace LynxLib
 
 			return size;
 		}
+        int read(LynxLib::LynxList<T>& target, int count)
+                       {
+                           target.reserveAndCopy(count);
 
+                           for (int i = 0; i < count; i++)
+                           {
+                               target.append(this->read());
+                           }
+
+                           return count;
+                       }
         int read(LynxLib::LynxList<T>& target)
 		{
             int size = this->count();
