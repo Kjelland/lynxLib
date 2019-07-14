@@ -5,6 +5,39 @@ TextHandler::TextHandler(QObject *parent) : QObject(parent)
 
 }
 
+const TextTypeInfo* StructInfo::structMember(int index)
+{
+    if(_structMembers.count() <= index)
+        return nullptr;
+
+    return &_structMembers.at(index);
+}
+
+void StructInfo::setStructName(QString text, bool valid)
+{
+    _structName.text = text;
+    _structName.valid = valid;
+}
+
+
+void StructInfo::setStructId(QString text, bool valid)
+{
+    _structId.text = text;
+    _structId.valid = valid;
+}
+
+void StructInfo::addStructMember(QString text, QString type, QString type_t, bool valid)
+{
+    _structMembers.append(TextTypeInfo(text, type, type_t, valid));
+}
+
+
+//-----------------------------------------------------------------
+//------------------------ TextHandler ----------------------------
+//-----------------------------------------------------------------
+
+TextHandler::TextHandler(QObject *parent) : QObject(parent){};
+
 void TextHandler::setText(QString input)
 {
     if(input == _text)
@@ -295,6 +328,40 @@ QString BackEnd::outputText()
     return _outputText;
 }
 
+    //------------- Wrapper -----------------
+    temp = "struct " + StructName +  "Wrapper\r\n{\r\n";
+    file.write(temp.toLatin1());
+
+    temp = "\t" + StructName +  "Wrapper() {} \r\n";
+    file.write(temp.toLatin1());
+
+    temp = "\t" + StructName +  "Wrapper(LynxHandler* lynxHandler, const LynxID& lynxID) { this->connect(lynxHandler, lynxID); } \r\n\r\n";
+    file.write(temp.toLatin1());
+
+    temp = "\tvoid connect(LynxHandler* lynxHandler, const LynxID& lynxID)\r\n\t{\r\n";
+    file.write(temp.toLatin1());
+
+    for (int i = 0; i < structInfo->memberCount(); i++)
+    {
+        temp = "\t\tvar_" + structInfo->structMember(i)->text + ".connect(lynxHandler, lynxID, " + structInfo->structMember(i)->text + ");\r\n";
+        file.write(temp.toLatin1());
+    }
+
+    temp = "\t}\r\n\r\n";
+    file.write(temp.toLatin1());
+
+    for (int i = 0; i < structInfo->memberCount(); i++)
+    {
+        temp = "\tLynxWrapperElement<" + structInfo->structMember(i)->type_t + "> var_" + structInfo->structMember(i)->text + ";\r\n";
+        file.write(temp.toLatin1());
+    }
+
+    temp = "};\r\n\r\n";
+    file.write(temp.toLatin1());
+
+    //--------------- end -------------------
+    temp = "#endif // " + STRUCT_NAME + "_STRUCT";
+    file.write(temp.toLatin1());
 
 void BackEnd::savePathSelected(QString path)
 {
@@ -348,8 +415,11 @@ void BackEnd::openPathSelected(QString path)
         "Double"
     };
 
-    int currentItem = 0;
-    int currentType = 0;
+
+    // int currentItem = 0;
+    int typeIndex = 0;
+
+    QString structName = "";
 
     while((temp != "") && (state != eFailure) && (state != eDone))
     {

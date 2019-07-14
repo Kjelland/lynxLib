@@ -14,6 +14,42 @@ struct TextHandlerLight
 struct TextHandlerType : public TextHandlerLight
 {
     QString type = "";
+    QString type_t = "";
+
+    TextTypeInfo(){}
+    TextTypeInfo(QString _text, QString _type, QString _type_t, bool _valid){ text = _text; type = _type; type_t = _type_t; valid = _valid; }
+};
+
+//-----------------------------------------------------------------
+//------------------------ StructInfo -----------------------------
+//-----------------------------------------------------------------
+
+class StructInfo : public QObject
+{
+    Q_OBJECT
+
+    TextInfo _structName;
+    TextInfo _structId;
+
+    QList<TextTypeInfo> _structMembers;
+
+public:
+    explicit StructInfo(QObject* parent = nullptr);
+
+    const TextInfo& structName();
+    const TextInfo& structId();
+    const TextTypeInfo* structMember(int index);
+    int memberCount() { return _structMembers.count(); }
+
+signals:
+    // void clearMemberList();
+
+public slots:
+    void setStructName(QString text, bool valid);
+    void setStructId(QString text, bool valid);
+    void addStructMember(QString text, QString type, QString type_t, bool valid);
+    void clear() { _structMembers.clear(); }
+
 };
 
 class TextHandler : public QObject

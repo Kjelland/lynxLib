@@ -1,49 +1,87 @@
 //-------------------------------------------------------------------------------------------
-//------------------------------------- Version 1.0.0.1 -------------------------------------
+//------------------------------------- Version 1.0.1.3 -------------------------------------
 //-------------------------------------------------------------------------------------------
 
 #pragma once
-//#define QT_LYNX
+
+
+
+#include "LynxStructure.h"
+
+#define QT_LYNX
+#ifdef TI
+#undef QT_LYNX
+
+#endif // TI
 
 #ifdef ARDUINO
 #undef QT_LYNX
 #include <arduino.h>
 #define ARDUINO_MEGA
+class NewData
+{
+public:
+	static void onNewUartData(const LynxLib::LynxID& id, int index);
+};
 #endif //ARDUINO
 
 #ifdef QT_LYNX
 #include <QtSerialPort/QSerialPort>
 #include <QtSerialPort/QSerialPortInfo>
+// #include <QDebug>
+
+
+
+class UartHandler;
+
+class InterruptObject : public QObject
+{
+    Q_OBJECT
+
+    UartHandler* _handler = LYNX_NULL;
+
+public:
+    explicit InterruptObject(UartHandler* handler, QObject* parent = LYNX_NULL);
+    void newData(const LynxLib::LynxID& id, int index);
+
+signals:
+    void onNewData(const LynxLib::LynxID& id, int index);
+
+public slots:
+    void update();
+};
+
 #endif //QT_LYNX
 
 #ifdef TI
 // TODO MAGNUS
 // Write here if you need includes
+#define DATABUFFER_SIZE 100
 #include "DSP28x_Project.h"
 #include   "f2802x_common/include/sci.h"
 #include   "f2802x_common/include/clk.h"
+class NewData
+{
+public:
+    static void onNewUartData(const LynxLib::LynxID& id,int index);
+};
 #endif // TI
-
-
-#include "LynxStructure.h"
-// #include "RingBuffer.h"
-
-#define DATABUFFER_SIZE 32
-#define REMOTE_ID 2
-
-// #define LYNX_DEBUG
 
 enum E_State
 {
     eIdle = 0,
     eScanning,
+    eIndexing,
     eReading,
+    eDone
 };
 
 class UartHandler
 {
 public:
     UartHandler();
+
+    UartHandler(LynxLib::LynxHandler* lynxHandler);
 
     // Opens the serial connection. Returns true if it was opened successfully.
     bool open(int port, int baudRate);
@@ -54,36 +92,71 @@ public:
     // Returns connection state of port
     bool opened();
 
-    // Links between received data and lynx. Run this as often as possible
-    void update(LynxLib::LynxHandler& lynxHandler);
+    // Links between received data and lynx. Run this as often as possible or on interrupt from the serial port
+    static void update(UartHandler* uartHandler);
+    void update();
 
-    // Sends content of the lynx id to the serial port
-    int send(LynxLib::LynxHandler& lynxHandler, const LynxLib::LynxID& lynxID);
+    // Sends content of the lynx id to the serial port.
+    // If subindex is not entered or less than zero all variables will be sent, otherwise only the variable with the specified subindex will be sent.
+    int send(const LynxLib::LynxID& lynxID, int subIndex = -1);
+
+    // Sends data directly to the serial port
+    int sendDirect(const char* data, int size);
+
+    // Send a string
+    int sendString(const LynxLib::LynxString & str);
+
+    // Send a string
+    int sendString(const char * cstr, int size = -1);
 
     // Returns true if new data has been received and added to lynx
     bool newData();
 
-    // returns one character from the buffer at "index"
-    char bufferAt(int index);
+    // Triggered when new data is received
+    void onNewData(const LynxLib::LynxID& id, int index);
+
+//    // returns one character from the buffer at "index"
+//    char bufferAt(int index);
 
     // Returns number of communication errors since strtup
-    int errorCount() { return _errorCounter; }
+    int errorCount() const { return _errorList.count(); }
 
-    // Enables device pairing
-//    void enableDevicePairing() { _devicePairing = true; }
+    // Connect to lynxhandler
+    void connectToLynx(LynxLib::LynxHandler* lynxHandler) { _lynxHandler = lynxHandler; }
 
-    //Disables device pairing
-//    void disableDevicePairing() { _devicePairing = false; }
+    // Returns how many bytes were received in the last datagram, resets to 0 when read;
+    int bytesRead() { int temp = _receivedBytes; _receivedBytes = 0; return temp; }
+
+    // Returns how many bytes were sent in the last datagram, resets to 0 when read;
+    int bytesWritten() { int temp = _sentBytes; _sentBytes = 0; return temp; }
+
+    // Flushes the internal databuffer
+    void flush();
+
+	// Gets the last received ID
+	const LynxLib::LynxID& lastReceivedId() const { return _tempID; }
+
+    int receiveBufferCount() const{return _readBuffer.count();}
+    int sendBufferCount() const{return _writeBuffer.count();}
+
+    char receiveBufferAt(int index) const{return _readBuffer.at(index);}
+    char sendBufferAt(int index) const{return _writeBuffer.at(index);}
+//    int bufferCount() { return _dataBuffer.count(); }
+
+//    int reservedBuffer() { return _dataBuffer.reservedSize(); }
+
+    LynxLib::LynxList<int> getErrorList();
+	int getError();
 
 private:
     // Reads a single character from serial and returns it
     char read();
 
     // Reads "size" bytes from the serial port, and puts it in buffer
-    int read(char* buffer, int size);
+    int read(LynxLib::LynxList<char>& buffer, int size);
 
-    // Writes "size" number of bytes from buffer to the serial port
-    int write(const char* buffer, int size);
+    // Writes the buffer to the serial port
+    int write(const LynxLib::LynxList<char>& buffer);
 
     // Returns number of bytes on port
     int bytesAvailable();
@@ -92,20 +165,38 @@ private:
     bool _newData = false;
     int _errorCounter = 0;
     int _port;
-    int _bytesIn = 0;
-    char _dataBuffer[DATABUFFER_SIZE];
-    // int _index = 0;
+    LynxLib::LynxList<char> _readBuffer;
+    LynxLib::LynxList<char> _writeBuffer;
+
+    LynxLib::LynxRingBuffer<int> _errorList = LynxLib::LynxRingBuffer<int>(10, LynxLib::LynxRingBuffer<int>::eAllowOverflow);
+
     bool _open = false;
     LynxLib::LynxID _tempID;
-    // bool _devicePairing = false;
+    int _lynxIndex;
     bool _shuffleBytes = false;
 
+    int _transferBytes = 0;
+    int _readSize = 0;
+
+    int _receivedBytes = 0;
+    int _sentBytes = 0;
+
 	LynxLib::LynxList<LynxLib::LynxID> _idList;
+
+    LynxLib::LynxHandler* _lynxHandler = LYNX_NULL;
+
 #ifdef QT_LYNX
 public:
     bool open(QSerialPortInfo port, int baudRate);
+    // void connecUpdatetInterrupt(QObject* targetObject);
+    // void onNewData(BackEnd* target);
+    void connectNewDataInterrupt(QObject* targetObject);
 private:
+    // BackEnd* _backEnd = LYNX_NULL;
     QSerialPort serialPort;
+
+    InterruptObject _interruptObject;
+
 #endif //QT_LYNX
 
 #ifdef TI
@@ -120,3 +211,5 @@ private:
     // int writeBytes(const char* buffer, int size,SCI_Handle sciHandle);
 #endif //TI
 };
+
+
