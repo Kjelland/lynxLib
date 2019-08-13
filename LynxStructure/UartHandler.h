@@ -147,7 +147,8 @@ public:
 
     LynxLib::LynxList<int> getErrorList();
 	int getError();
-
+    // Returns number of bytes on port
+    int bytesAvailable();
 private:
     // Reads a single character from serial and returns it
     char read();
@@ -158,8 +159,7 @@ private:
     // Writes the buffer to the serial port
     int write(const LynxLib::LynxList<char>& buffer);
 
-    // Returns number of bytes on port
-    int bytesAvailable();
+
 
     E_State _state = eIdle;
     bool _newData = false;
