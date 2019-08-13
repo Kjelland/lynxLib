@@ -36,6 +36,21 @@ BackEnd::BackEnd(QObject *parent) :
     _uint64_returnVar = 0;
     _float_returnVar = 0;
     _double_returnVar = 0;
+    uint16_t buf[10]={0};
+    int index=0;
+floatToBuffer(buf,index,float(1.2));
+qDebug()<<"subindex is"<< index;
+uintToBuffer(buf,index,uint16_t(1234));
+qDebug()<<"subindex is"<< index;
+intToBuffer(buf,index,int16_t(-1234));
+
+uintToBuffer(buf,index,uint16_t(1234));
+
+uintToBuffer(buf,index,uint16_t(1234));
+
+uintToBuffer(buf,index,uint16_t(1234));
+qDebug()<<buf[0]<<buf[1]<<buf[2]<<buf[3]<<buf[4]<<buf[5]<<buf[6]<<buf[7]<<buf[8]<<buf[9];
+qDebug()<<"subindex is"<< index;
 
 }
 
@@ -131,12 +146,12 @@ void BackEnd::onNewData(const LynxID& id, int index)
         {
         case test_int8:
             // emit int8_returnVarChanged();
-            set_int8_returnVar(_lynxHandler.getData<int8_t>(id, index));
+            set_int8_returnVar(_lynxHandler.getData<int16_t>(id, index));
 //            qDebug() << "---------------------";
 //            qDebug() << _lynxHandler.getData<int8_t>(id, index);
             break;
         case test_uint8:
-            set_uint8_returnVar(_lynxHandler.getData<uint8_t>(id, index));
+            set_uint8_returnVar(_lynxHandler.getData<uint16_t>(id, index));
 //            qDebug() << "---------------------";
 //            qDebug() << _lynxHandler.getData<uint8_t>(id, index);
             break;
@@ -186,8 +201,8 @@ void BackEnd::onNewData(const LynxID& id, int index)
             if(index == -1)
             {
                 // qDebug() << "received all vars";
-                set_int8_returnVar(_lynxHandler.getData<int8_t>(id, test_int8));
-                set_uint8_returnVar(_lynxHandler.getData<uint8_t>(id, test_uint8));
+                set_int8_returnVar(_lynxHandler.getData<int16_t>(id, test_int8));
+                set_uint8_returnVar(_lynxHandler.getData<uint16_t>(id, test_uint8));
                 set_int16_returnVar(_lynxHandler.getData<int16_t>(id, test_int16));
                 set_uint16_returnVar(_lynxHandler.getData<uint16_t>(id, test_uint16));
                 set_int32_returnVar(_lynxHandler.getData<int32_t>(id, test_int32));
@@ -206,8 +221,14 @@ void BackEnd::onNewData(const LynxID& id, int index)
     {
         if(id.structTypeID == LynxLib::eLynxString)
         {
+            LynxString temp = _lynxHandler.getReceivedString();
+            for (int i = 0; i < temp.count(); i++)
+            {
+                qDebug() << QString::number(uint8_t(temp.at(i)), 16);
+            }
+
 //            qDebug() << "---------------------";
-//            qDebug() << _lynxHandler.getReceivedString().toCstr();
+            qDebug() << _lynxHandler.getReceivedString().toCstr();
 
             QString tmp(_lynxHandler.getReceivedString().toCstr());
             emit receivedString(tmp);

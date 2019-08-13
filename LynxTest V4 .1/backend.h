@@ -74,8 +74,8 @@ class BackEnd : public QObject
     Q_OBJECT
 
     // QT_LYNX_MEMBER_DEF(int, int8_var, _sendID, int8_t, test_int8)
-    QT_LYNX_WRAPPER_DEF(int, int8_var, _sendData, int8_t, test_int8)
-    QT_LYNX_WRAPPER_DEF(int, uint8_var, _sendData, uint8_t, test_uint8)
+    QT_LYNX_WRAPPER_DEF(int, int8_var, _sendData, int16_t, test_int8)
+    QT_LYNX_WRAPPER_DEF(int, uint8_var, _sendData, uint16_t, test_uint8)
     QT_LYNX_WRAPPER_DEF(int, int16_var, _sendData, int16_t, test_int16)
     QT_LYNX_WRAPPER_DEF(int, uint16_var, _sendData, uint16_t, test_uint16)
     QT_LYNX_WRAPPER_DEF(int, int32_var, _sendData, int32_t, test_int32)

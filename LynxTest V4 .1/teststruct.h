@@ -22,8 +22,8 @@ enum E_TestContents
 
 static const StructItem testItems[]
 {
-    StructItem( "test_int8", eInt8 ),
-	StructItem( "test_uint8", eUint8 ),
+    StructItem( "test_int8", eInt16 ),
+    StructItem( "test_uint8", eUint16 ),
 	StructItem( "test_int16", eInt16 ),
 	StructItem( "test_uint16", eUint16 ),
 	StructItem( "test_int32", eInt32 ),
@@ -49,8 +49,8 @@ struct TestWrapper
 
 	void connect(LynxHandler* lynxHandler, const LynxID& lynxID)
 	{
-		var_test_int8.connect(lynxHandler, lynxID, test_int8);
-		var_test_uint8.connect(lynxHandler, lynxID, test_uint8);
+        var_test_int8.connect(lynxHandler, lynxID, test_int8);
+        var_test_uint8.connect(lynxHandler, lynxID, test_uint8);
 		var_test_int16.connect(lynxHandler, lynxID, test_int16);
 		var_test_uint16.connect(lynxHandler, lynxID, test_uint16);
 		var_test_int32.connect(lynxHandler, lynxID, test_int32);
@@ -61,8 +61,8 @@ struct TestWrapper
 		var_test_double.connect(lynxHandler, lynxID, test_double);
 	}
 
-    LynxWrapperElement<int8_t> var_test_int8;
-	LynxWrapperElement<uint8_t> var_test_uint8;
+    LynxWrapperElement<int16_t> var_test_int8;
+    LynxWrapperElement<uint16_t> var_test_uint8;
 	LynxWrapperElement<int16_t> var_test_int16;
 	LynxWrapperElement<uint16_t> var_test_uint16;
 	LynxWrapperElement<int32_t> var_test_int32;
