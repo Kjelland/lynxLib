@@ -5,11 +5,19 @@
 #ifndef LYNX_STRUCTURE
 #define LYNX_STRUCTURE
 
+#ifdef TI
+typedef uint16_t uint8_t
+typedef int16_t int8_t
+#else
 #include <stdint.h>
-// #include <std>
+#endif // TI
 
 #ifndef LYNX_NULL
+#ifdef TI
+#define LYNX_NULL 0
+#else
 #define LYNX_NULL nullptr
+#endif // TI
 #endif // !LYNX_NULL
 
 #define SIZE_64 sizeof(int64_t)
@@ -20,9 +28,9 @@
 // #define LYNX_INDEXER_BYTES 2
 #define LYNX_CHECKSUM_BYTES 1
 
-#ifndef ARDUINO
+#if !defined(ARDUINO) && !defined(TI)
 #define LYNX_INCLUDE_EXCEPTIONS
-#endif // ARDUINO
+#endif // !ARDUINO && !TI
 
 namespace LynxLib
 {
@@ -210,6 +218,19 @@ namespace LynxLib
 	//---------------------------------------------- Types ------------------------------------------------------
 	//-----------------------------------------------------------------------------------------------------------
 
+    enum E_LynxErrorCode
+    {
+        eNoChange = 0,
+        eNewDataReceived,
+        eOutOfSync,
+        eStructIdNotFound,
+        eIndexOutOfBounds,
+        eBufferToSmall,
+        eWrongChecksum,
+        eWrongStaticHeader,
+        eWrongDataLength
+    };
+
 	enum E_LynxDataType
 	{
 		eInvalidType = 0,
@@ -308,8 +329,8 @@ namespace LynxLib
 
 	struct LynxID
 	{
-        LynxID() : structId(0), deviceId(0), length(0), index(-1), state(0) {}
-        LynxID(uint8_t _structId, uint8_t _deviceId, uint8_t _state = 0, uint8_t _length = 0) :
+        LynxID() : structId(0), deviceId(0), length(0), index(-1), state(eNoChange) {}
+        LynxID(uint8_t _structId, uint8_t _deviceId, E_LynxErrorCode _state = eNoChange, uint8_t _length = 0) :
             structId(_structId),
             deviceId(_deviceId),
             length(_length),
@@ -323,10 +344,11 @@ namespace LynxLib
 		uint8_t deviceId;
 		uint8_t length;
 		int index;
-		uint8_t state;
+        E_LynxErrorCode state;
 
-		bool operator == (const LynxID & other) const { return((structId == other.structId) && (length == other.length)); }
-		bool operator != (const LynxID & other) const { return(!(*this == other)); }
+        // bool operator == (const LynxID & other) const { return((structId == other.structId) && (length == other.length)); }
+        // bool operator != (const LynxID & other) const { return(!(*this == other)); }
+
         const LynxID & operator = (const LynxID & other)
         {
             if (&other == this)
@@ -368,10 +390,10 @@ namespace LynxLib
 		int toArray(char * buffer, int index = -1) const;
 
 		// Copies information from the provided buffer
-		LynxID fromArray(const LynxByteArray & buffer);
+        void fromArray(const LynxByteArray & buffer, LynxID & lynxId);
 
 		// Copies information from char array, and returns number of bytes copied
-		LynxID fromArray(const char * buffer, int size);
+        void fromArray(const char * buffer, int size, LynxID & lynxId);
 
 		// Manually add a variable to the variable list
 		void addVariable(E_LynxDataType dataType);
@@ -381,6 +403,9 @@ namespace LynxLib
 
 		// Returns the local size of requested data (not including header and checksum)
 		int localSize(int index = -1) const;
+
+        // Returns number of variables in the struct
+        int count() const { return _variables.count(); }
 
 	private:
 		LynxList<LynxType> _variables;

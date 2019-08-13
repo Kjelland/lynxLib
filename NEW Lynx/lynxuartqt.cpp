@@ -1,6 +1,6 @@
 #include "lynxuartqt.h"
 
-LynxUartQt::LynxUartQt(LynxStructure & structure) : LynxUartBaseClass(structure)
+LynxUartQt::LynxUartQt(LynxStructure & structure) : LynxIoDevice(structure)
 {
 
 }

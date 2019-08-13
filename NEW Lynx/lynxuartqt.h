@@ -1,14 +1,14 @@
 #ifndef LYNXUARTQT_H
 #define LYNXUARTQT_H
 
-#include "lynxuart.h"
+#include "lynxiodevice.h"
 #include <QtSerialPort/QSerialPort>
 #include <QIODevice>
 #include <QtDebug>
 
 using namespace LynxLib;
 
-class LynxUartQt : public LynxUartBaseClass
+class LynxUartQt : public LynxIoDevice
 {
 public:
     LynxUartQt(LynxStructure &  structure);

@@ -198,43 +198,17 @@ namespace LynxLib
 		return temp.count();
 	}
 
-	LynxID LynxStructure::fromArray(const LynxByteArray & buffer)
+    void LynxStructure::fromArray(const LynxByteArray & buffer, LynxID & lynxId)
 	{
-		int bufferIndex = 0;
-		LynxID tempID;
+        int bufferIndex = LYNX_HEADER_BYTES;
 
-		if (buffer.at(bufferIndex) != LYNX_STATIC_HEADER)
-		{
-			tempID.state = 5;
-			return tempID;
-		}
-
-		bufferIndex++;
-
-		tempID.structId = static_cast<uint8_t>(buffer.at(bufferIndex));
-		bufferIndex++;
-        if (tempID.structId != _lynxID.structId)
-        {
-            tempID.state = 1;
-            return tempID;
-        }
-        tempID.index = static_cast<int>(buffer.at(bufferIndex)) - 1;
-        bufferIndex++;
-        tempID.length = static_cast<uint8_t>(buffer.at(bufferIndex));
-		bufferIndex++;
-		tempID.deviceId = static_cast<uint8_t>(buffer.at(bufferIndex));
-		bufferIndex++;
-
-
-
-        int totalSize = tempID.length + LYNX_HEADER_BYTES + LYNX_CHECKSUM_BYTES;
+        int totalSize = lynxId.length + LYNX_HEADER_BYTES + LYNX_CHECKSUM_BYTES;
 
 		if (buffer.count() < totalSize)
 		{
-			tempID.state = 3;
-			return tempID;
+            lynxId.state = eBufferToSmall;
+            return;
 		}
-
 
 		// Check the checksum
 		int checksumIndex = totalSize - 1;
@@ -246,33 +220,33 @@ namespace LynxLib
 
 		if ((checksum & 0xff) != (buffer.at(checksumIndex) & 0xff))
 		{
-			tempID.state = 4;
-			return tempID;
+            lynxId.state = eWrongChecksum;
+            return;
 		}
 
-        if (tempID.index < 0) // All variables
+        if (lynxId.index < 0) // All variables
 		{
 			for (int i = 0; i < _variables.count(); i++)
 			{
 				bufferIndex += _variables[i].fromArray(buffer, bufferIndex);
 			}
 		}
-        else if (tempID.index > _variables.count()) // Invalid index
+        else if (lynxId.index > _variables.count()) // Invalid index
 		{
-			tempID.state = 2;
-			return tempID;
+            lynxId.state = eIndexOutOfBounds;
+            return;
 		}
 		else // Single variable
 		{
-            bufferIndex += _variables[tempID.index].fromArray(buffer, bufferIndex);
+            bufferIndex += _variables[lynxId.index].fromArray(buffer, bufferIndex);
 		}
 
-		return tempID;
+        lynxId.state = eNewDataReceived;
 	}
 
-	LynxID LynxStructure::fromArray(const char * buffer, int size)
+    void LynxStructure::fromArray(const char * buffer, int size, LynxID & lynxId)
 	{
-		return this->fromArray(LynxByteArray(buffer, size));
+        this->fromArray(LynxByteArray(buffer, size), lynxId);
 	}
 
 	void LynxStructure::addVariable(E_LynxDataType dataType)

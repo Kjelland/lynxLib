@@ -1,16 +1,16 @@
 #ifndef LYNX_UART_ARDUINO
 #define LYNX_UART_ARDUINO
 
-#include "lynxuart.h"
+#include "lynxiodevice.h"
 #include <Arduino.h>
 
 using namespace LynxLib;
 
 class LynxUartArduino :
-	public LynxUartBaseClass
+	public LynxIoDevice
 {
 public:
-	LynxUartArduino(LynxStructure & structure) : LynxUartBaseClass(structure) {};
+	LynxUartArduino(LynxStructure & structure) : LynxIoDevice(structure) {};
 	~LynxUartArduino() {};
 
 	bool open(int port, int baudRate);
