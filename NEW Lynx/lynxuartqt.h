@@ -11,7 +11,8 @@ using namespace LynxLib;
 class LynxUartQt : public LynxIoDevice
 {
 public:
-    LynxUartQt(LynxStructure &  structure);
+    LynxUartQt(LynxManager & lynx);
+    ~LynxUartQt() {}
 
     bool open(int port, int baudRate);
     void close();
@@ -19,9 +20,8 @@ public:
     QSerialPort * portPointer() { return &_port; }
 
 private:
-    int readSerial(int count = 1);
-    void writeSerial();
-    // void writeAll();
+    int read(int count = 1);
+    void write();
     int bytesAvailable() const;
 
     QSerialPort _port;

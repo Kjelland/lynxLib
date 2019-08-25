@@ -6,6 +6,10 @@ namespace LynxLib
     const char * LynxMessages::outOfBoundsMsg = "Index out of bounds";
 #endif // LYNX_INCLUDE_EXCEPTIONS
 
+	//-----------------------------------------------------------------------------------------------------------
+	//-------------------------------------------- LynxType -----------------------------------------------------
+	//-----------------------------------------------------------------------------------------------------------
+
 	E_Endianness LynxType::_endianness = eNotSet;
 
 	LynxType::LynxType()
@@ -28,7 +32,65 @@ namespace LynxLib
 		_dataType = dataType;
 	}
 
-	int LynxType::localSize(E_LynxDataType dataType)
+	int LynxType::toArray(LynxByteArray & buffer) const
+	{
+		int localSize = this->localSize();
+
+		switch (LynxType::endianness())
+		{
+		case LynxLib::eBigEndian:
+            for (int i = 0; i < localSize; i++)
+			{
+				buffer.append(_data.bytes[int(SIZE_64) - i - 1]);
+			}
+			break;
+		case LynxLib::eLittleEndian:
+            for (int i = 0; i < localSize; i++)
+			{
+				buffer.append(_data.bytes[i]);
+			}
+			break;
+		default:
+			return 0;
+		}
+
+        return localSize;
+	}
+
+	int LynxType::fromArray(const LynxByteArray & buffer, int startIndex)
+	{
+		int localSize = this->localSize();
+
+		switch (LynxType::endianness())
+		{
+		case LynxLib::eBigEndian:
+            for (int i = 0; i < localSize; i++)
+			{
+                _data.bytes[int(SIZE_64) - i - 1] = buffer.at(startIndex + i);
+			}
+			break;
+		case LynxLib::eLittleEndian:
+            for (int i = 0; i < localSize; i++)
+			{
+				_data.bytes[i] = buffer.at(startIndex + i);
+			}
+			break;
+		default:
+			return 0;
+		}
+
+        return localSize;
+	}
+
+	int LynxType::localSize() const { return LynxLib::localSize(_dataType); }
+
+	int LynxType::transferSize() const { return LynxLib::transferSize(_dataType); }
+
+	//-----------------------------------------------------------------------------------------------------------
+	//-------------------------------------- Static Functions ---------------------------------------------------
+	//-----------------------------------------------------------------------------------------------------------
+
+	int localSize(LynxLib::E_LynxDataType dataType)
 	{
 		switch (dataType)
 		{
@@ -55,11 +117,11 @@ namespace LynxLib
 		default:
 			break;
 		}
-
+	
 		return 0;
 	}
-
-	int LynxType::transferSize(E_LynxDataType dataType)
+	
+	int transferSize(LynxLib::E_LynxDataType dataType)
 	{
 		switch (dataType)
 		{
@@ -86,217 +148,235 @@ namespace LynxLib
 		default:
 			break;
 		}
-
+	
 		return 0;
 	}
 
-	int LynxType::toArray(LynxByteArray & buffer) const
+	int splitArray(LynxByteArray & buffer, int desiredSize)
 	{
-		switch (LynxType::endianness())
+		if (buffer.count() == desiredSize)
+			return buffer.count();
+		else if (buffer.count() > desiredSize)
+			return -1;
+
+		LynxByteArray temp(desiredSize);
+
+		int shiftSize;
+		char mask;
+
+		while (temp.count() < desiredSize)
 		{
-		case LynxLib::eBigEndian:
-            for (int i = 0; i < this->transferSize(); i++)
+			temp.clear();
+
+			shiftSize = (desiredSize / buffer.count() / 2);
+			mask = sizeMask(shiftSize);
+
+			for (int i = 0; i < buffer.count(); i++)
 			{
-				buffer.append(_data.bytes[int(SIZE_64) - i - 1]);
+				temp.append(buffer.at(i) & mask);
+				temp.append((buffer.at(i) >> (shiftSize * 8)) & mask);
 			}
-			break;
-		case LynxLib::eLittleEndian:
-            for (int i = 0; i < this->transferSize(); i++)
-			{
-				buffer.append(_data.bytes[i]);
-			}
-			break;
-		default:
-			return 0;
+
+			buffer = temp;
 		}
 
-        return this->transferSize();
+		return buffer.count();
 	}
 
-	int LynxType::fromArray(const LynxByteArray & buffer, int startIndex)
+	int mergeArray(LynxByteArray & buffer, int desiredSize)
 	{
-		switch (LynxType::endianness())
+		if (buffer.count() == desiredSize)
+			return buffer.count();
+		else if (buffer.count() < desiredSize)
+			return -1;
+
+		LynxByteArray temp(buffer.count() / 2);
+
+		int maxSize = buffer.count();
+		int shiftSize;
+		char mask;
+		char tempVar;
+
+		while (buffer.count() > desiredSize)
 		{
-		case LynxLib::eBigEndian:
-            for (int i = 0; i < this->transferSize(); i++)
+			temp.clear();
+
+			shiftSize = maxSize / buffer.count();
+			mask = sizeMask(shiftSize);
+
+			for (int i = 0; i < buffer.count(); i += 2)
 			{
-                _data.bytes[int(SIZE_64) - i - 1] = buffer.at(startIndex + i);
+				tempVar = 0;
+				tempVar |= (buffer.at(i) & mask);
+				tempVar |= ((buffer.at(i + 1) & mask) << (shiftSize * 8));
+
+				temp.append(tempVar);
 			}
-			break;
-		case LynxLib::eLittleEndian:
-            for (int i = 0; i < this->transferSize(); i++)
-			{
-				_data.bytes[i] = buffer.at(startIndex + i);
-			}
-			break;
-		default:
-			return 0;
+
+			buffer = temp;
 		}
 
-        return this->transferSize();
+		return buffer.count();
 	}
 
-	LynxStructure::LynxStructure(LynxID lynxID) : _lynxID(lynxID)
+	char sizeMask(int shiftSize)
 	{
-		_lynxID.length = 0;
-		_lynxID.index = -1;
-	}
+		char mask = 0;
 
-	LynxByteArray LynxStructure::toArray(int index) const
-	{
-		LynxByteArray temp;
-		this->toArray(temp, index);
-
-		return temp;
-	}
-
-	void LynxStructure::toArray(LynxByteArray & buffer, int index) const
-	{
-		if ((_variables.count() < 1) || (index >= _variables.count()))
-			return;
-
-        buffer.reserve(this->transferSize(index) + LYNX_HEADER_BYTES + LYNX_CHECKSUM_BYTES);
-		buffer.append(LYNX_STATIC_HEADER);
-        buffer.append(static_cast<char>(_lynxID.structId));
-        buffer.append(static_cast<char>(index + 1));
-
-		if (index < 0)
-            buffer.append(static_cast<char>(_lynxID.length));
-		else
-            buffer.append(static_cast<char>(_variables.at(index).transferSize()));
-
-        buffer.append(static_cast<char>(_lynxID.deviceId));
-
-		if (index < 0) // All variables
+		for (int i = 0; i < shiftSize; i++)
 		{
-			for (int i = 0; i < _variables.count(); i++)
+			mask |= (char(0xff) << i * 8);
+		}
+
+		return mask;
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	//---------------------------------------- LynxStructure ----------------------------------------------------
+	//-----------------------------------------------------------------------------------------------------------
+
+	LynxStructure::LynxStructure(int size) : LynxList(size)
+	{
+		_transferSize = 0;
+		_localSize = 0;
+		_structId = -1;
+	}
+
+	// LynxByteArray LynxStructure::toArray(int variableIndex) const
+	// {
+	// 	LynxByteArray temp;
+	// 	this->toArray(temp, variableIndex);
+	// 
+	// 	return temp;
+	// }
+
+	E_LynxState LynxStructure::toArray(LynxByteArray & buffer, int variableIndex) const
+	{
+		if (_count < 1)
+			return eNoStructuresInList;
+		else if (variableIndex >= _count)
+			return eVariableIndexOutOfBounds;
+
+		int transferSize = this->transferSize(variableIndex);
+		LynxByteArray tempBuffer(transferSize);
+
+		if (variableIndex < 0) // All variables
+		{
+			for (int i = 0; i < _count; i++)
 			{
-				_variables.at(i).toArray(buffer);
+				_data[i].toArray(tempBuffer);
 			}
 		}
 		else // Single variable
 		{
-			_variables.at(index).toArray(buffer);
+			_data[variableIndex].toArray(tempBuffer);
 		}
 
-		char checksum = 0;
-		for (int i = 0; i < buffer.count(); i++)
-		{
-			checksum += buffer.at(i);
-		}
+		int splitSize = splitArray(tempBuffer, transferSize);
 
-        buffer.append(checksum & char(0xff));
+		if (splitSize != transferSize)
+			return eSplitArrayFailed;
+
+		buffer.append(tempBuffer);
+
+		return eDataCopiedToBuffer;
 	}
 
-	int LynxStructure::toArray(char * buffer, int index) const
+	E_LynxState LynxStructure::toArray(char * buffer, int maxSize, int & copiedSize, int variableIndex) const
 	{
 		LynxByteArray temp;
-		this->toArray(temp, index);
+		E_LynxState state = this->toArray(temp, variableIndex);
 
-		temp.toCharArray(buffer);
+		if (state != eDataCopiedToBuffer)
+		{
+			copiedSize = 0;
+			return state;
+		}
 
-		return temp.count();
+		copiedSize = temp.toCharArray(buffer, maxSize);
+		if (copiedSize < 0)
+		{
+			copiedSize = 0;
+			return eBufferTooSmall;
+		}
+
+		return state;
 	}
 
-    void LynxStructure::fromArray(const LynxByteArray & buffer, LynxID & lynxId)
+    void LynxStructure::fromArray(const LynxByteArray & buffer, LynxInfo & lynxInfo)
 	{
-        int bufferIndex = LYNX_HEADER_BYTES;
+        int bufferIndex = 0;
 
-        int totalSize = lynxId.length + LYNX_HEADER_BYTES + LYNX_CHECKSUM_BYTES;
-
-		if (buffer.count() < totalSize)
+        if (lynxInfo.lynxId.variableIndex < 0) // All variables
 		{
-            lynxId.state = eBufferToSmall;
-            return;
-		}
-
-		// Check the checksum
-		int checksumIndex = totalSize - 1;
-		char checksum = 0;
-		for (int i = 0; i < checksumIndex; i++)
-		{
-			checksum += buffer.at(i);
-		}
-
-		if ((checksum & 0xff) != (buffer.at(checksumIndex) & 0xff))
-		{
-            lynxId.state = eWrongChecksum;
-            return;
-		}
-
-        if (lynxId.index < 0) // All variables
-		{
-			for (int i = 0; i < _variables.count(); i++)
+			for (int i = 0; i < _count; i++)
 			{
-				bufferIndex += _variables[i].fromArray(buffer, bufferIndex);
+				bufferIndex += _data[i].fromArray(buffer, bufferIndex);
 			}
 		}
-        else if (lynxId.index > _variables.count()) // Invalid index
+        else if (lynxInfo.lynxId.variableIndex > _count) // Invalid index
 		{
-            lynxId.state = eIndexOutOfBounds;
+            lynxInfo.state = eVariableIndexOutOfBounds;
             return;
 		}
 		else // Single variable
 		{
-            bufferIndex += _variables[lynxId.index].fromArray(buffer, bufferIndex);
+            bufferIndex += _data[lynxInfo.lynxId.variableIndex].fromArray(buffer, bufferIndex);
 		}
 
-        lynxId.state = eNewDataReceived;
+        lynxInfo.state = eNewDataReceived;
 	}
 
-    void LynxStructure::fromArray(const char * buffer, int size, LynxID & lynxId)
+    void LynxStructure::fromArray(const char * buffer, int size, LynxInfo & lynxInfo)
 	{
-        this->fromArray(LynxByteArray(buffer, size), lynxId);
+        this->fromArray(LynxByteArray(buffer, size), lynxInfo);
 	}
 
-	void LynxStructure::addVariable(E_LynxDataType dataType)
+	LynxId LynxStructure::addVariable(int structIndex, E_LynxDataType dataType)
 	{
-		_variables.append(LynxType(dataType));
-		_lynxID.length += _variables.last().transferSize();
+		this->append(LynxType(dataType));
+
+		_transferSize += this->last().transferSize();
+		_localSize += this->last().localSize();
+
+		return LynxId(structIndex, (_count - 1));
 	}
 
 	int LynxStructure::transferSize(int index) const
 	{
 		if (index < 0) // All variables
 		{
-            return _lynxID.length;
-            // int totalSize = 0;
-            // for (int i = 0; i < _variables.count(); i++)
-            // {
-            // 	totalSize += _variables.at(i).transferSize();
-            // }
-            // return totalSize;
+            return _transferSize;
 		}
-		else if (index >= _variables.count()) // Out of bounds
+		else if (index >= _count) // Out of bounds
 		{
 			return 0;
 		}
 		else // Single variable
 		{
-			return _variables.at(index).transferSize();
+			return _data[index].transferSize();
 		}
 	}
 
-	int LynxStructure::localSize(int index) const
+	int LynxStructure::localSize(int variableIndex) const
 	{
-		if (index < 0) // All variables
+		if (variableIndex < 0) // All variables
 		{
-			int totalSize = 0;
-			for (int i = 0; i < _variables.count(); i++)
-			{
-				totalSize += _variables.at(i).localSize();
-			}
-			return totalSize;
+			return _localSize;
 		}
-		else if (index >= _variables.count()) // Out of bounds
+		else if (variableIndex >= _count) // Out of bounds
 		{
 			return 0;
 		}
 		else // Single variable
 		{
-			return _variables.at(index).localSize();
+			return _data[variableIndex].localSize();
 		}
 	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	//--------------------------------------- LynxByteArray -----------------------------------------------------
+	//-----------------------------------------------------------------------------------------------------------
 
 	LynxByteArray::LynxByteArray(const char * charArray, int size) : LynxList<char>(size)
 	{
@@ -308,11 +388,230 @@ namespace LynxLib
 		_count = size;
 	}
 
-	void LynxByteArray::toCharArray(char * buffer) const
+	int LynxByteArray::toCharArray(char * buffer, int maxSize) const
 	{
+		if (_count > maxSize)
+			return -1;
+
 		for (int i = 0; i < _count; i++)
 		{
 			buffer[i] = _data[i];
 		}
+
+		return _count;
 	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	//----------------------------------------- LynxManager -----------------------------------------------------
+	//-----------------------------------------------------------------------------------------------------------
+
+	LynxManager::LynxManager(char deviceId, int size) : LynxList(size) { _deviceId = deviceId; }
+
+    char LynxManager::structId(const LynxId & lynxId)
+    {
+        if((lynxId.structIndex < 0) || (lynxId.structIndex > _count))
+            return char(0xff);
+
+        return _data[lynxId.structIndex].structId();
+    }
+
+	LynxType & LynxManager::variable(const LynxId & lynxId)
+	{
+		if ((lynxId.variableIndex < 0) || (lynxId.structIndex < 0))
+		{
+			_dummyVariable.var_i64() = 0;
+			return _dummyVariable;
+		}
+
+		return (*this)[lynxId.structIndex][lynxId.variableIndex];
+	}
+
+	const LynxType & LynxManager::variable(const LynxId & lynxId) const
+	{
+		if ((lynxId.variableIndex < 0) || (lynxId.structIndex < 0))
+		{
+			return _dummyVariable;
+		}
+
+		return this->at(lynxId.structIndex).at(lynxId.variableIndex);
+	}
+
+	// LynxByteArray LynxManager::toArray(const LynxId & lynxId) const
+	// {
+	// 	LynxByteArray temp;
+	// 
+	// 	this->toArray(temp, lynxId);
+	// 
+	// 	return temp;
+	// }
+
+	E_LynxState LynxManager::toArray(LynxByteArray & buffer, const LynxId & lynxId) const
+	{
+		if ((lynxId.structIndex < 0) || (lynxId.structIndex >= _count))
+			return eStructIndexOutOfBounds;
+
+		int dataLength = _data[lynxId.structIndex].transferSize(lynxId.variableIndex);
+
+		if (dataLength < 1)
+			return eDataLengthNotFound;
+
+		buffer.reserve(dataLength + LYNX_HEADER_BYTES + LYNX_CHECKSUM_BYTES);
+		buffer.append(LYNX_STATIC_HEADER);
+		buffer.append(_data[lynxId.structIndex].structId());
+		buffer.append(static_cast<char>(lynxId.variableIndex + 1));
+		buffer.append(static_cast<char>(dataLength));
+		buffer.append(_deviceId);
+
+		E_LynxState state = _data[lynxId.structIndex].toArray(buffer, lynxId.variableIndex);
+
+		if (state != eDataCopiedToBuffer)
+			return state;
+
+		char checksum = 0;
+		for (int i = 0; i < buffer.count(); i++)
+		{
+			checksum += buffer.at(i);
+		}
+
+		buffer.append(checksum & char(0xff));
+
+		return state;
+	}
+
+	E_LynxState LynxManager::toArray(char * buffer, int maxSize, int & copiedSize, const LynxId & lynxId) const
+	{
+		LynxByteArray temp;
+		E_LynxState state = this->toArray(temp, lynxId);
+
+		if (state != eDataCopiedToBuffer)
+		{
+			copiedSize = 0;
+			return state;
+		}
+
+		copiedSize = temp.toCharArray(buffer, maxSize);
+		if (copiedSize < 0)
+		{
+			copiedSize = 0;
+			return eBufferTooSmall;
+		}
+
+		return state;
+	}
+
+	void LynxManager::fromArray(const LynxByteArray & buffer, LynxInfo & lynxInfo)
+	{
+		lynxInfo.lynxId.structIndex = this->findId(buffer.at(1));
+		lynxInfo.lynxId.variableIndex = buffer.at(2) - 1;
+		lynxInfo.dataLength = buffer.at(3);
+		lynxInfo.deviceId = buffer.at(4);
+
+		// Check the struct ID
+		if (lynxInfo.lynxId.structIndex < 0)
+		{
+			lynxInfo.state = eStructIdNotFound;
+			return;
+		}
+
+		// Check the variable index
+		if (lynxInfo.lynxId.variableIndex > _data[lynxInfo.lynxId.structIndex].count())
+		{
+			lynxInfo.state = eVariableIndexOutOfBounds;
+			return;
+		}
+
+		// Check the total size
+		int totalSize = lynxInfo.dataLength + LYNX_HEADER_BYTES + LYNX_CHECKSUM_BYTES;
+		if (buffer.count() < totalSize)
+		{
+			lynxInfo.state = eBufferTooSmall;
+			return;
+		}
+
+		// Calculate the checksum
+		int checksumIndex = totalSize - 1;
+		char checksum = 0;
+		for (int i = 0; i < checksumIndex; i++)
+		{
+			checksum += buffer.at(i);
+		}
+		// Check the checksum
+		if ((checksum & 0xff) != (buffer.at(checksumIndex) & 0xff))
+		{
+			lynxInfo.state = eWrongChecksum;
+			return;
+		}
+
+		// Make a temporary buffer and extract the data
+		LynxByteArray temp;
+		buffer.subList(temp, LYNX_HEADER_BYTES, LYNX_HEADER_BYTES + lynxInfo.dataLength - 1);
+
+		// Merge the databuffer if the local size is different from the transfersize
+		int count = mergeArray(temp, _data[lynxInfo.lynxId.structIndex].localSize(lynxInfo.lynxId.variableIndex));
+
+		// Check if the merge was successful
+		if (count < 0)
+		{
+			lynxInfo.state = eMergeArrayFailed;
+			return;
+		}
+
+		// Copy the data
+		_data[lynxInfo.lynxId.structIndex].fromArray(temp, lynxInfo);
+	}
+
+	void LynxManager::fromArray(const char * buffer, int size, LynxInfo & lynxInfo)
+	{
+		LynxByteArray temp(buffer, size);
+
+		this->fromArray(temp, lynxInfo);
+	}
+
+	int LynxManager::transferSize(const LynxId & lynxId) const
+	{
+		return _data[lynxId.structIndex].transferSize(lynxId.variableIndex);
+	}
+
+	int LynxManager::localSize(const LynxId & lynxId) const
+	{
+		return _data[lynxId.structIndex].localSize(lynxId.variableIndex);
+	}
+
+	LynxId LynxManager::addStructure(char structId, int size)
+	{
+		LynxId temp;
+		temp.structIndex = this->append();
+		this->last().reserve(size);
+		this->last().setStructId(structId);
+
+		return temp;
+	}
+
+	LynxVar LynxManager::addVariable(const LynxId & lynxId, E_LynxDataType dataType)
+	{
+		 if ((lynxId.structIndex < 0) || (lynxId.structIndex > _count))
+		 	return LynxVar(this, LynxId(-1, -1));
+		 	
+		 return LynxVar(this, _data[lynxId.structIndex].addVariable(lynxId.structIndex, dataType));
+	}
+
+	int LynxManager::structVariableCount(int structIndex)
+	{
+		if ((structIndex < 0) || (structIndex >= _count))
+			return 0;
+
+		return _data[structIndex].count();
+	}
+
+	int LynxManager::findId(char structId)
+	{
+		for (int i = 0; i < _count; i++)
+		{
+			if (_data[i].structId() == structId)
+				return i;
+		}
+		return -1;
+	}
+
+	// LynxManager Lynx;
 }

@@ -1,11 +1,10 @@
 #include "lynxiodevice.h"
 namespace LynxLib
 {
-    LynxIoDevice::LynxIoDevice(LynxStructure & structure) :
+    LynxIoDevice::LynxIoDevice(LynxManager & lynx) :
         _state(eFindHeader),
-        _lastID(),
-        _structure(&structure),
-		_open(false)
+        _open(false),
+        _lynx(&lynx)
 	{
 	}
 
@@ -15,9 +14,9 @@ namespace LynxLib
 	}
 
 
-    const LynxID & LynxIoDevice::runSerial()
+    const LynxInfo & LynxIoDevice::update()
     {
-        _lastID.state = eNoChange;
+        _updateInfo.state = eNoChange;
 
 		if (_state == eFindHeader)
 		{
@@ -26,7 +25,7 @@ namespace LynxLib
             while (this->bytesAvailable() && (_state == eFindHeader))
 			{
 				_readBuffer.clear();
-                this->readSerial();
+                this->read();
 				if (_readBuffer.at(0) == LYNX_STATIC_HEADER)
                     _state = eFindStructId;
 			}
@@ -36,49 +35,50 @@ namespace LynxLib
         {
             if(this->bytesAvailable())
             {
-                this->readSerial();
+                this->read();
 
-                _lastID.structId = uint8_t(_readBuffer.at(1));
+                _updateInfo.lynxId.structIndex = _lynx->findId(_readBuffer.at(1));
 
-                if (_lastID.structId == _structure->lynxID().structId)
+                if (_updateInfo.lynxId.structIndex < 0)
                 {
-                    _state = eGetId;
+					_state = eFindHeader;
+					_updateInfo.state = eStructIdNotFound;
+					return _updateInfo;
                 }
                 else
                 {
-                    _state = eFindHeader;
-                    _lastID.state = eStructIdNotFound;
-                    return _lastID;
+					_state = eGetInfo;
                 }
             }
         }
 
-        if (_state == eGetId)
+        if (_state == eGetInfo)
 		{
-            if (this->bytesAvailable() >= (LYNX_HEADER_BYTES - 2))
+            if (this->bytesAvailable() >= 3)
 			{
-                this->readSerial();
-                _lastID.index = int(_readBuffer.at(2)) - 1;
-                if(_lastID.index > _structure->count())
+                this->read();
+                _updateInfo.lynxId.variableIndex = int(_readBuffer.at(2)) - 1;
+                if(_updateInfo.lynxId.variableIndex > _lynx->structVariableCount(_updateInfo.lynxId.structIndex))
                 {
                     _state = eFindHeader;
-                    _lastID.state = eIndexOutOfBounds;
-                    return _lastID;
+                    _updateInfo.state = eVariableIndexOutOfBounds;
+                    return _updateInfo;
                 }
 
-                this->readSerial();
-                _lastID.length = uint8_t(_readBuffer.at(3));
-                if(_lastID.length > _structure->transferSize(_lastID.index))
+                this->read();
+                _updateInfo.dataLength = int(_readBuffer.at(3));
+                if(_updateInfo.dataLength != _lynx->transferSize(_updateInfo.lynxId))
                 {
                     _state = eFindHeader;
-                    _lastID.state = eWrongDataLength;
-                    return _lastID;
+                    _updateInfo.state = eWrongDataLength;
+                    return _updateInfo;
                 }
 
-                this->readSerial();
-                _lastID.deviceId = uint8_t(_readBuffer.at(4));
+                this->read();
+                _updateInfo.deviceId = _readBuffer.at(4);
 
-                _transferLength = _lastID.length + LYNX_CHECKSUM_BYTES;
+				_transferLength = _updateInfo.dataLength + LYNX_CHECKSUM_BYTES;
+
                 _state = eGetData;
 			}
 		}
@@ -89,21 +89,26 @@ namespace LynxLib
 			{
 				_readBuffer.resize(_readBuffer.count() + _transferLength);
 
-                readSerial(_transferLength);
+                read(_transferLength);
 
-                _structure->fromArray(_readBuffer, _lastID);
+                _lynx->fromArray(_readBuffer, _updateInfo);
 
 				_state = eFindHeader;
 			}
 		}
 
-		return _lastID;
+		return _updateInfo;
 	}
 
-    void LynxIoDevice::sendSerial(int index)
+    E_LynxState LynxIoDevice::send(const LynxId & lynxId)
 	{
-        _structure->toArray(_writeBuffer, index);
+        E_LynxState state = _lynx->toArray(_writeBuffer, lynxId);
 	
-        this->writeSerial();
+		if (state != eDataCopiedToBuffer)
+			return state;
+
+        this->write();
+
+		return state;
 	}
 }

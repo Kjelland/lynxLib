@@ -1,6 +1,6 @@
 #include "lynxuartqt.h"
 
-LynxUartQt::LynxUartQt(LynxStructure & structure) : LynxIoDevice(structure)
+LynxUartQt::LynxUartQt(LynxManager & lynx) : LynxIoDevice(lynx)
 {
 
 }
@@ -26,7 +26,7 @@ void LynxUartQt::close()
     _open = false;
 }
 
-int LynxUartQt::readSerial(int count)
+int LynxUartQt::read(int count)
 {
     if(!_open)
         return 0;
@@ -42,12 +42,12 @@ int LynxUartQt::readSerial(int count)
     return temp.count();
 }
 
-void LynxUartQt::writeSerial()
+void LynxUartQt::write()
 {
     if(!_open)
         return;
 
-    _port.write(_writeBuffer.dataPointer(), _writeBuffer.count());
+    _port.write(_writeBuffer.data(), _writeBuffer.count());
 
 //    const LynxByteArray & temp = _uart.writeBuffer();
 

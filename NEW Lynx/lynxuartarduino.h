@@ -10,16 +10,15 @@ class LynxUartArduino :
 	public LynxIoDevice
 {
 public:
-	LynxUartArduino(LynxStructure & structure) : LynxIoDevice(structure) {};
+	LynxUartArduino(LynxManager & lynx) : LynxIoDevice(lynx) {};
 	~LynxUartArduino() {};
 
 	bool open(int port, int baudRate);
 	void close();
 
 private:
-	int readSerial(int count = 1);
-	void writeSerial();
-	// void writeAll();
+	int read(int count = 1);
+	void write();
 	int bytesAvailable() const;
 
 	int _port;

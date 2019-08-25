@@ -88,7 +88,7 @@ void LynxUartArduino::close()
 	_open = false;
 }
 
-int LynxUartArduino::readSerial(int count)
+int LynxUartArduino::read(int count)
 {
 	if (!_open)
 		return 0;
@@ -193,7 +193,7 @@ int LynxUartArduino::readSerial(int count)
 //
 //}
 
-void LynxUartArduino::writeSerial()
+void LynxUartArduino::write()
 {
 	if (!_open)
 		return;
@@ -202,22 +202,22 @@ void LynxUartArduino::writeSerial()
 	{
 	case 0:
 #ifdef HAVE_HWSERIAL0
-		Serial.write(reinterpret_cast<const uint8_t*>(_writeBuffer.dataPointer()), _writeBuffer.count());
+		Serial.write(reinterpret_cast<const uint8_t*>(_writeBuffer.data()), _writeBuffer.count());
 #endif // HAVE_HWSERIAL0
 		break;
 	case 1:
 #ifdef HAVE_HWSERIAL1
-		Serial1.write(reinterpret_cast<const uint8_t*>(_writeBuffer.dataPointer()), _writeBuffer.count());
+		Serial1.write(reinterpret_cast<const uint8_t*>(_writeBuffer.data()), _writeBuffer.count());
 #endif // HAVE_HWSERIAL1
 		break;
 	case 2:
 #ifdef HAVE_HWSERIAL2
-		Serial2.write(reinterpret_cast<const uint8_t*>(_writeBuffer.dataPointer()), _writeBuffer.count());
+		Serial2.write(reinterpret_cast<const uint8_t*>(_writeBuffer.data()), _writeBuffer.count());
 #endif // HAVE_HWSERIAL2
 		break;
 	case 3:
 #ifdef HAVE_HWSERIAL3
-		Serial3.write(reinterpret_cast<const uint8_t*>(_writeBuffer.dataPointer()), _writeBuffer.count());
+		Serial3.write(reinterpret_cast<const uint8_t*>(_writeBuffer.data()), _writeBuffer.count());
 #endif // HAVE_HWSERIAL3
 		break;
 	default:
