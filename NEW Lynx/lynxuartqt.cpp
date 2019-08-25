@@ -5,7 +5,7 @@ LynxUartQt::LynxUartQt(LynxManager & lynx) : LynxIoDevice(lynx)
 
 }
 
-bool LynxUartQt::open(int port, int baudRate)
+bool LynxUartQt::open(int port, unsigned long baudRate)
 {
     if(_open)
         this->close();
@@ -20,7 +20,7 @@ bool LynxUartQt::open(int port, int baudRate)
     return _open;
 }
 
-bool LynxUartQt::open(QSerialPortInfo port, int baudRate)
+bool LynxUartQt::open(QSerialPortInfo port, unsigned long baudRate)
 {
     if(_open)
         this->close();

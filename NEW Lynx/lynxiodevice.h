@@ -23,7 +23,7 @@ namespace LynxLib
         E_LynxState send(const LynxId & lynxId);
         bool opened() { return _open; }
 
-        virtual bool open(int port, int baudRate) = 0;
+        virtual bool open(int port, unsigned long baudRate) = 0;
         virtual void close() = 0;
 
         const LynxByteArray & readBuffer() const { return _readBuffer; }

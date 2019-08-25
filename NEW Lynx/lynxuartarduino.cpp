@@ -1,6 +1,6 @@
 #include "lynxuartarduino.h"
 
-bool LynxUartArduino::open(int port, int baudRate)
+bool LynxUartArduino::open(int port, unsigned long baudRate)
 {
 	if (_open)
 		this->close();

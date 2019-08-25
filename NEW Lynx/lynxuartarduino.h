@@ -13,7 +13,7 @@ public:
 	LynxUartArduino(LynxManager & lynx) : LynxIoDevice(lynx) {};
 	~LynxUartArduino() {};
 
-	bool open(int port, int baudRate);
+	bool open(int port, unsigned long baudRate);
 	void close();
 
 private:
