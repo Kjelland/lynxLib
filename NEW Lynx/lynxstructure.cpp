@@ -32,54 +32,81 @@ namespace LynxLib
 		_dataType = dataType;
 	}
 
-	int LynxType::toArray(LynxByteArray & buffer) const
+    int LynxType::toArray(LynxByteArray & buffer, E_LynxState & state) const
 	{
 		int localSize = this->localSize();
+        int transferSize = this->transferSize();
+
+        LynxByteArray tempBuffer(transferSize);
 
 		switch (LynxType::endianness())
 		{
 		case LynxLib::eBigEndian:
             for (int i = 0; i < localSize; i++)
 			{
-				buffer.append(_data.bytes[int(SIZE_64) - i - 1]);
+                tempBuffer.append(_data.bytes[int(SIZE_64) - i - 1]);
 			}
 			break;
 		case LynxLib::eLittleEndian:
             for (int i = 0; i < localSize; i++)
 			{
-				buffer.append(_data.bytes[i]);
+                tempBuffer.append(_data.bytes[i]);
 			}
 			break;
 		default:
-			return 0;
+            state = eEndiannessNotSet;
+            return 0;
 		}
 
-        return localSize;
+        splitArray(tempBuffer, transferSize);
+
+        if(tempBuffer.count() != transferSize)
+        {
+            state = eSplitArrayFailed;
+            return 0;
+        }
+
+        buffer.append(tempBuffer);
+
+        return transferSize;
 	}
 
-	int LynxType::fromArray(const LynxByteArray & buffer, int startIndex)
+    int LynxType::fromArray(const LynxByteArray & buffer, int startIndex, E_LynxState & state)
 	{
 		int localSize = this->localSize();
+        int transferSize = this->transferSize();
+
+        LynxByteArray tempBuffer(transferSize);
+        buffer.subList(tempBuffer, startIndex, (startIndex + transferSize - 1));
+
+        int count = mergeArray(tempBuffer, localSize);
+
+        if (count != localSize)
+        {
+            state = eMergeArrayFailed;
+            return transferSize;
+        }
 
 		switch (LynxType::endianness())
 		{
 		case LynxLib::eBigEndian:
             for (int i = 0; i < localSize; i++)
 			{
-                _data.bytes[int(SIZE_64) - i - 1] = buffer.at(startIndex + i);
+                _data.bytes[int(SIZE_64) - i - 1] = tempBuffer.at(i);
 			}
 			break;
 		case LynxLib::eLittleEndian:
             for (int i = 0; i < localSize; i++)
 			{
-				_data.bytes[i] = buffer.at(startIndex + i);
+                _data.bytes[i] = tempBuffer.at(i);
 			}
 			break;
 		default:
+            state = eEndiannessNotSet;
 			return 0;
 		}
 
-        return localSize;
+        return transferSize;
 	}
 
 	int LynxType::localSize() const { return LynxLib::localSize(_dataType); }
@@ -257,29 +284,21 @@ namespace LynxLib
 		else if (variableIndex >= _count)
 			return eVariableIndexOutOfBounds;
 
-		int transferSize = this->transferSize(variableIndex);
-		LynxByteArray tempBuffer(transferSize);
+        E_LynxState state = eDataCopiedToBuffer;
 
 		if (variableIndex < 0) // All variables
 		{
 			for (int i = 0; i < _count; i++)
 			{
-				_data[i].toArray(tempBuffer);
+                _data[i].toArray(buffer, state);
 			}
 		}
 		else // Single variable
 		{
-			_data[variableIndex].toArray(tempBuffer);
+            _data[variableIndex].toArray(buffer, state);
 		}
 
-		int splitSize = splitArray(tempBuffer, transferSize);
-
-		if (splitSize != transferSize)
-			return eSplitArrayFailed;
-
-		buffer.append(tempBuffer);
-
-		return eDataCopiedToBuffer;
+        return state;
 	}
 
 	E_LynxState LynxStructure::toArray(char * buffer, int maxSize, int & copiedSize, int variableIndex) const
@@ -305,13 +324,15 @@ namespace LynxLib
 
     void LynxStructure::fromArray(const LynxByteArray & buffer, LynxInfo & lynxInfo)
 	{
-        int bufferIndex = 0;
+        int bufferIndex = LYNX_HEADER_BYTES;
+
+        lynxInfo.state = eNewDataReceived;
 
         if (lynxInfo.lynxId.variableIndex < 0) // All variables
 		{
 			for (int i = 0; i < _count; i++)
 			{
-				bufferIndex += _data[i].fromArray(buffer, bufferIndex);
+                bufferIndex += _data[i].fromArray(buffer, bufferIndex, lynxInfo.state);
 			}
 		}
         else if (lynxInfo.lynxId.variableIndex > _count) // Invalid index
@@ -321,10 +342,8 @@ namespace LynxLib
 		}
 		else // Single variable
 		{
-            bufferIndex += _data[lynxInfo.lynxId.variableIndex].fromArray(buffer, bufferIndex);
+            bufferIndex += _data[lynxInfo.lynxId.variableIndex].fromArray(buffer, bufferIndex, lynxInfo.state);
 		}
-
-        lynxInfo.state = eNewDataReceived;
 	}
 
     void LynxStructure::fromArray(const char * buffer, int size, LynxInfo & lynxInfo)
@@ -543,21 +562,21 @@ namespace LynxLib
 		}
 
 		// Make a temporary buffer and extract the data
-		LynxByteArray temp;
-		buffer.subList(temp, LYNX_HEADER_BYTES, LYNX_HEADER_BYTES + lynxInfo.dataLength - 1);
+        // LynxByteArray temp;
+        // buffer.subList(temp, LYNX_HEADER_BYTES, LYNX_HEADER_BYTES + lynxInfo.dataLength - 1);
 
 		// Merge the databuffer if the local size is different from the transfersize
-		int count = mergeArray(temp, _data[lynxInfo.lynxId.structIndex].localSize(lynxInfo.lynxId.variableIndex));
+        // int count = mergeArray(temp, _data[lynxInfo.lynxId.structIndex].localSize(lynxInfo.lynxId.variableIndex));
 
 		// Check if the merge was successful
-		if (count < 0)
-		{
-			lynxInfo.state = eMergeArrayFailed;
-			return;
-		}
+        // if (count < 0)
+        // {
+        // 	lynxInfo.state = eMergeArrayFailed;
+        // 	return;
+        // }
 
 		// Copy the data
-		_data[lynxInfo.lynxId.structIndex].fromArray(temp, lynxInfo);
+        _data[lynxInfo.lynxId.structIndex].fromArray(buffer, lynxInfo);
 	}
 
 	void LynxManager::fromArray(const char * buffer, int size, LynxInfo & lynxInfo)

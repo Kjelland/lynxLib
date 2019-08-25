@@ -296,6 +296,7 @@ namespace LynxLib
 		eStructIndexOutOfBounds,
 		eSplitArrayFailed,
 		eMergeArrayFailed,
+        eEndiannessNotSet,
 		eUnknownError
     };
 
@@ -356,8 +357,8 @@ namespace LynxLib
 
 		// static int splitVariable(LynxByteArray & buffer, int desiredSize);
 
-		int toArray(LynxByteArray & buffer) const;
-		int fromArray(const LynxByteArray & buffer, int startIndex);
+        int toArray(LynxByteArray & buffer, E_LynxState & state) const;
+        int fromArray(const LynxByteArray & buffer, int startIndex, E_LynxState & state);
 
 		// If the program assumes the wrong endianness it can be set manually with this function
 		static void setEndianness(E_Endianness endianness) { LynxType::_endianness = endianness; }

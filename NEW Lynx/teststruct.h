@@ -8,7 +8,7 @@ using namespace LynxLib;
 struct TestStructure
 {
     TestStructure(LynxManager & lynx, char _structId) :
-		lynxId(lynx.addStructure(_structId, 10)),
+		lynxId(lynx.addStructure(_structId, 9)),
 		i8Var(lynx.addVariable(lynxId, eInt8)),
 		u8Var(lynx.addVariable(lynxId, eUint8)),
 		i16Var(lynx.addVariable(lynxId, eInt16)),
