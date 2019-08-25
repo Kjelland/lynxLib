@@ -3,6 +3,7 @@
 
 #include "lynxiodevice.h"
 #include <QtSerialPort/QSerialPort>
+#include <QtSerialPort/QSerialPortInfo>
 #include <QIODevice>
 #include <QtDebug>
 
@@ -15,6 +16,7 @@ public:
     ~LynxUartQt() {}
 
     bool open(int port, int baudRate);
+    bool open(QSerialPortInfo port, int baudrate);
     void close();
 
     QSerialPort * portPointer() { return &_port; }

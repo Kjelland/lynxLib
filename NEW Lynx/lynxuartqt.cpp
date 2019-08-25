@@ -20,6 +20,19 @@ bool LynxUartQt::open(int port, int baudRate)
     return _open;
 }
 
+bool LynxUartQt::open(QSerialPortInfo port, int baudRate)
+{
+    if(_open)
+        this->close();
+
+    _port.setPort(port);
+    _port.setBaudRate(baudRate);
+
+    _open = _port.open(QSerialPort::ReadWrite);
+
+    return _open;
+}
+
 void LynxUartQt::close()
 {
     _port.close();
@@ -48,28 +61,7 @@ void LynxUartQt::write()
         return;
 
     _port.write(_writeBuffer.data(), _writeBuffer.count());
-
-//    const LynxByteArray & temp = _uart.writeBuffer();
-
-    QString tempStr = "";
-
-    for (int i = 0; i < _writeBuffer.count(); i++)
-    {
-        tempStr += QString::number(_writeBuffer.at(i));
-        if(i != (_writeBuffer.count() - 1))
-            tempStr += " ";
-    }
-
-    qDebug() << tempStr;
 }
-
-//void LynxUartQt::writeAll()
-//{
-//    if(!_open)
-//        return;
-
-//    _port.write(_writeBuffer.dataPointer(), _writeBuffer.count());
-//}
 
 int LynxUartQt::bytesAvailable() const
 {
