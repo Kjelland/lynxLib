@@ -455,6 +455,14 @@ namespace LynxLib
 		return this->at(lynxId.structIndex).at(lynxId.variableIndex);
 	}
 
+	void LynxManager::copy(const LynxId & source, const LynxId & target)
+	{
+		if ((source.variableIndex < 0) || (target.variableIndex < 0))
+			return;
+		
+		_data[target.structIndex][target.variableIndex].var_i64() = _data[source.structIndex][source.variableIndex].var_i64();
+	}
+
 	// LynxByteArray LynxManager::toArray(const LynxId & lynxId) const
 	// {
 	// 	LynxByteArray temp;

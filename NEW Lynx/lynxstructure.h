@@ -513,6 +513,8 @@ namespace LynxLib
 		LynxType & variable(const LynxId & lynxId);
 		const LynxType & variable(const LynxId & lynxId) const;
 
+		void copy(const LynxId & source, const LynxId & target);
+
 		// Creates a buffer with the desired information, and returns it
 		// LynxByteArray toArray(const LynxId & lynxId) const;
 
@@ -553,6 +555,12 @@ namespace LynxLib
 	public:
         LynxVar(LynxManager * const lynxManager, const LynxId & lynxId) : _lynxId(lynxId), _lynxManager(lynxManager) {}
 		const LynxId & lynxId() const { return _lynxId; }
+
+		const LynxVar & operator = (const LynxVar & other)
+		{
+			_lynxManager->copy(other._lynxId, this->_lynxId);
+			return *this;
+		}
 
 	protected:
 		const LynxId _lynxId;

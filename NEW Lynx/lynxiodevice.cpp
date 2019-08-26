@@ -3,8 +3,8 @@ namespace LynxLib
 {
     LynxIoDevice::LynxIoDevice(LynxManager & lynx) :
         _state(eFindHeader),
-        _lynx(&lynx),
-		_open(false)
+        _open(false),
+        _lynx(&lynx)
 	{
 	}
 
