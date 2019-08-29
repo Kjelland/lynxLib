@@ -32,6 +32,8 @@ typedef int16_t int8_t
 #define LYNX_INCLUDE_EXCEPTIONS
 #endif // !ARDUINO && !TI
 
+#include <string.h>
+
 namespace LynxLib
 {
 	class LynxVar;
@@ -247,6 +249,116 @@ namespace LynxLib
 		int _reservedCount;
 	};
 
+	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------ LynxString -----------------------------------------------------
+	//-----------------------------------------------------------------------------------------------------------
+	class LynxString
+	{
+	public:
+		LynxString();
+		LynxString(int size);
+		LynxString(const char * const other, int maxLength = 255);
+		LynxString(const LynxString & other);
+
+		~LynxString();
+
+		const char & at(int index) const;
+		char & operator [] (int index);
+
+		char & first();
+		const char & first() const;
+		char & last();
+		const char & last() const;
+
+		int count() const;
+
+		const LynxString & operator = (const LynxString & other);
+		const LynxString & operator = (const char * const other);
+
+		void operator += (const char & other);
+		void operator += (const LynxString & other);
+		void operator += (const char * const other);
+
+		LynxString operator + (const char & other);
+		LynxString operator + (const LynxString & other);
+		LynxString operator + (const char * const other);
+
+		void resize(int size);
+
+		LynxString subString(int startIndex, int endIndex);
+		
+		void append(const char & other);
+		void append(const LynxString & other);
+		void append(const char * const other, int maxLength = 255);
+
+		const char * toCharArray() const;
+	private:
+		char * _string;
+		int _count;
+		int _reservedCount;
+
+		void reserve(int size);
+		static int findTermChar(const char * str, int maxLength = 255);
+	};
+
+	//class LynxString : private LynxList<char>
+	//{
+	//public:
+	//	LynxString() {};
+	//	LynxString(int size) : LynxList(size + 1) {}
+	//	LynxString(const char * const other, int maxLength = 255);
+
+	//	using LynxList::at;
+	//	using LynxList::first;
+	//	using LynxList::operator [];
+
+	//	void operator += (const char & other) { this->append(other); }
+	//	void operator += (const LynxString & other) { this->append(other); }
+	//	void operator += (const char * const other) { this->append(other); }
+
+	//	LynxString operator + (const char & other)
+	//	{
+	//		LynxString temp(this->_count + 1);
+	//		temp.append(*this);
+	//		temp.append(other);
+	//		return temp;
+	//	}
+	//	LynxString operator + (const LynxString & other)
+	//	{
+	//		LynxString temp(this->_count + other._count - 2);
+	//		temp.append(*this);
+	//		temp.append(other);
+	//		return temp;
+	//	}
+	//	LynxString operator + (const char * const other)
+	//	{
+	//		LynxString temp(other);
+	//		LynxString temp2(this->_count + temp._count - 2);
+	//		temp2.append(*this);
+	//		temp2.append(temp);
+	//		return temp2;
+	//	}
+
+	//	const char & last() const { return _data[_count - 2]; }
+	//	char & last() { return _data[_count - 2]; }
+	//	void reserve(int size) { LynxList::reserve(size + 1); }
+	//	void resize(int size) { LynxList::resize(size + 1); }
+
+	//	LynxString subString(int startIndex, int endIndex);
+	//	void append(const char & other);
+	//	void append(const LynxString & other);
+	//	void append(const char * const other);
+
+	//	const char * toCharArray() const;
+	//private:
+	//};
+
+
+	//-----------------------------------------------------------------------------------------------------------
+	//----------------------------------------- LynxByteArray ---------------------------------------------------
+	//-----------------------------------------------------------------------------------------------------------
+
+
 	class LynxByteArray : public LynxList<char>
 	{
 	public:
@@ -264,12 +376,6 @@ namespace LynxLib
 			LynxList::subList(temp, startIndex, endIndex);
 			return temp;
 		}
-
-		// const LynxByteArray & operator = (const LynxList<char> & other)
-		// {
-		// 	return *this;
-		// }
-		
 
 		int toCharArray(char * buffer, int maxSize) const;
 

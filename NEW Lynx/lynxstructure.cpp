@@ -5,6 +5,323 @@ namespace LynxLib
 #ifdef LYNX_INCLUDE_EXCEPTIONS
     const char * LynxMessages::outOfBoundsMsg = "Index out of bounds";
 #endif // LYNX_INCLUDE_EXCEPTIONS
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------ LynxString -----------------------------------------------------
+	//-----------------------------------------------------------------------------------------------------------
+
+	LynxString::LynxString()
+	{
+		_string = LYNX_NULL;
+		_count = 0;
+		_reservedCount = 0;
+	}
+
+	LynxString::LynxString(int size) : LynxString()
+	{
+		this->reserve(size + 1);
+	}
+
+	LynxString::LynxString(const char * const other, int maxLength) : LynxString()
+	{
+		int copySize = findTermChar(other, maxLength) + 1;
+
+		if (copySize < 1)
+			return;
+
+		this->reserve(copySize);
+
+		memcpy(_string, other, copySize);
+		
+		_count = copySize;
+	}
+
+	LynxString::LynxString(const LynxString & other) : LynxString()
+	{
+		*this = other;
+	}
+
+	LynxString::~LynxString()
+	{
+		if (_string != LYNX_NULL)
+		{
+			delete[] _string;
+			_string = LYNX_NULL;
+		}
+	}
+
+	const char & LynxString::at(int index) const
+	{
+		return _string[index];
+	}
+
+	char & LynxString::first()
+	{
+		return _string[0];
+	}
+
+	const char & LynxString::first() const
+	{
+		return _string[0];
+	}
+
+	char & LynxString::last()
+	{
+		return _string[_count - 2];
+	}
+
+	const char & LynxString::last() const
+	{
+		return _string[_count - 2];
+	}
+
+	int LynxString::count() const
+	{
+		if (_count < 1)
+			return 0;
+
+		return (_count - 1);
+	}
+
+	const LynxString & LynxString::operator=(const LynxString & other)
+	{
+		if ((&other == this) || (other._count < 2))
+			return *this;
+		
+		this->reserve(other._count);
+		memcpy(_string, other._string, other._count);
+		_count = other._count;
+		
+		return *this;
+	}
+
+	const LynxString & LynxString::operator=(const char * const other)
+	{
+		int copySize = findTermChar(other) + 1;
+
+		if (copySize < 1)
+			return *this;
+
+		this->reserve(copySize);
+
+		memcpy(_string, other, copySize);
+
+		_count = copySize;
+	}
+
+	void LynxString::operator+=(const char & other)
+	{
+		this->append(other);
+	}
+
+	void LynxString::operator+=(const LynxString & other)
+	{
+		this->append(other);
+	}
+
+	void LynxString::operator+=(const char * const other)
+	{
+		this->append(other);
+	}
+
+	LynxString LynxString::operator+(const char & other)
+	{
+		LynxString temp(*this);
+		temp.append(other);
+		return temp;
+	}
+
+	LynxString LynxString::operator+(const LynxString & other)
+	{
+		LynxString temp(*this);
+		temp.append(other);
+		return temp;
+	}
+
+	LynxString LynxString::operator+(const char * const other)
+	{
+		LynxString temp(*this);
+		temp.append(other);
+		return temp;
+	}
+
+	void LynxString::reserve(int size)
+	{
+		_count = 0;
+
+		if (size <= _reservedCount)
+			return;
+
+		if (_string != LYNX_NULL)
+		{ 
+			delete[] _string;
+			_string = LYNX_NULL;
+		}
+
+		_reservedCount = size;
+		_string = new char[_reservedCount];
+	}
+
+	void LynxString::resize(int size)
+	{
+		if ((size + 1) <= _reservedCount)
+			return;
+
+		if (_count < 1)
+		{
+			this->reserve(size + 1);
+			return;
+		}
+
+		char * oldString = _string;
+
+		_reservedCount = size + 1;
+		_string = new char[_reservedCount];
+
+		memcpy(_string, oldString, _count);
+
+		delete[] oldString;
+		oldString = LYNX_NULL;
+	}
+
+	LynxString LynxString::subString(int startIndex, int endIndex)
+	{
+		if ((startIndex < 0) || (endIndex >= (_count - 1)) || (startIndex > endIndex))
+			return LynxString();
+
+		int copySize = endIndex - startIndex + 1;
+
+		LynxString temp(copySize);
+		memcpy(temp._string, &(_string[startIndex]), copySize);
+		temp._string[copySize] = '\0';
+		temp._count = copySize + 1;
+
+		return temp;
+	}
+
+	void LynxString::append(const char & other)
+	{
+		this->resize(_count);
+		_string[_count - 1] = other;
+		_count++;
+	}
+
+	void LynxString::append(const LynxString & other)
+	{
+		if (other._count < 2) // nothing to copy
+			return;
+
+		this->resize(_count + other._count - 2);
+		memcpy(&(_string[_count - 1]), other._string, other._count);
+		_count = _count + other._count - 1;
+	}
+
+	void LynxString::append(const char * const other, int maxLength)
+	{
+		int copyCount = findTermChar(other, maxLength) + 1;
+
+		if (copyCount < 2) // nothing to copy
+			return;
+
+		this->resize(_count + copyCount - 2);
+		memcpy(&(_string[_count - 1]), other, copyCount);
+		_count = _count + copyCount - 1;
+	}
+
+	const char * LynxString::toCharArray() const
+	{
+		if (_count < 1)
+			return "";
+
+		return _string;
+	}
+
+	int LynxString::findTermChar(const char * str, int maxLength)
+	{
+		for (int i = 0; i < maxLength; i++)
+		{
+			if (str[i] == '\0')
+			{
+				return i;
+			}
+		}
+
+		return -1;
+	}
+
+	char & LynxString::operator[](int index)
+	{
+		return _string[index];
+	}
+
+
+	//LynxString::LynxString(const char * const other, int maxLength)
+	//{
+	//	int length = 0;
+	//	for (int i = 0; i < maxLength; i++)
+	//	{
+	//		if (other[i] == '\0')
+	//		{
+	//			length = i;
+	//			break;
+	//		}
+	//	}
+
+	//	if (length < 1)
+	//		return;
+
+	//	this->reserve(length);
+
+	//	for (int i = 0; i < length; i++)
+	//	{
+	//		_data[i] = other[i];
+	//	}
+
+	//	_data[length] = '\0';
+	//	_count = length + 1;
+	//}
+
+	//LynxString LynxString::subString(int startIndex, int endIndex)
+	//{	
+	//	LynxString temp;
+	//	if (endIndex >= (_count - 1))
+	//		return temp;
+
+	//	temp.reserve(endIndex - startIndex + 1);
+	//	this->subList(temp, startIndex, endIndex);
+	//	temp._data[temp._count] = '\0';
+	//	temp._count++;
+
+	//	return temp;	
+	//}
+
+	//void LynxString::append(const char & other)
+	//{
+	//	_data[_count - 1] = other;
+	//	LynxList::append('\0');
+	//}
+
+	//void LynxString::append(const char * const other)
+	//{
+	//	LynxString temp(other);
+	//	this->append(temp);
+	//}
+
+	//void LynxString::append(const LynxString & other)
+	//{
+	//	_count--;
+	//	LynxList::append(other);
+	//}
+
+	//const char * LynxString::toCharArray() const
+	//{
+	//	if (_count < 1)
+	//	{
+	//		return '\0';
+	//	}
+
+	//	return _data;
+	//}
 
 	//-----------------------------------------------------------------------------------------------------------
 	//-------------------------------------------- LynxType -----------------------------------------------------
@@ -639,6 +956,5 @@ namespace LynxLib
 		}
 		return -1;
 	}
-
 	// LynxManager Lynx;
 }
